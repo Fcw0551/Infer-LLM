@@ -1,0 +1,20 @@
+# 模型权重目录
+models/
+
+# 权重文件（防止有人把 gguf 放到别处）
+*.gguf
+*.bin
+*.safetensors
+
+# C++ 构建产物
+build/
+cmake-build-*/
+*.o
+*.obj
+
+# 编辑器
+.vscode/
+.idea/
+
+#测试
+test/
