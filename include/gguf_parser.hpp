@@ -1,5 +1,5 @@
 #pragma once
-#include "util.h"
+#include "util.hpp"
 #include <vector>
 #include <span>
 #include <expected>
@@ -37,7 +37,7 @@ struct TensorInfo {
     std::string _name;                              // 如 "blk.0.attn_q.weight"
     uint32_t    _n_dims;                            // 维度数，1~4
     std::array<uint64_t, GGUF_MAX_DIMS> _dims;       // 维度大小
-    TensorType    _type;                               // 数据类型
+    DataType    _type;                               // 数据类型
     uint64_t    _offset;                             // 相对于数据区起始的字节偏移
 };
 
@@ -117,6 +117,44 @@ public:
         }
         return nullptr;
     }
+    
+    template <typename T>
+    std::expected<T, std::error_code> get_meta(std::string_view key) const{
+        const MetaValue *mv = find(key);
+        if (!mv){
+            return std::unexpected(std::make_error_code(std::errc::not_supported));
+        }
+        if (!std::holds_alternative<T>(mv->scalar)){
+            return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+        }
+        return std::get<T>(mv->scalar);
+    }
+    // 获取ARRAY类型kv的数组长度
+    std::expected<uint64_t, std::error_code> get_meta_array_len(std::string_view key) const{
+        const MetaValue *mv = find(key);
+        if (!mv){
+            return std::unexpected(std::make_error_code(std::errc::not_supported));
+        }
+        if (mv->type != GGUFType::GGUF_TYPE_ARRAY){
+            return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+        }
+        return static_cast<uint64_t>(mv->array_elems.size());
+    }
+    //获取ARRAY类型kv的数组的类型
+    template <typename T>
+    std::expected<T, std::error_code> get_meta_array_type(std::string_view key) const{
+        const MetaValue *mv = find(key);
+        if (!mv){
+            return std::unexpected(std::make_error_code(std::errc::not_supported));
+        }
+        if (!std::holds_alternative<T>(mv->scalar)){
+            return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+        }
+        return std::get<T>(mv->array_elem_type);
+    }
+
+
+
     size_t size() const { return _metadata.size(); }
     void print() const;   
 private:
@@ -135,8 +173,12 @@ public:
 
     const GGUFHeader& header() const { return _gguf_header; }
     const std::vector<TensorInfo>& tensors() const { return _tensors; }
+    // 按名字查张量元信息，找不到返回 nullptr
+    TensorInfo* find_tensor(std::string_view name) const {
+        auto it = _tensor_index.find(std::string(name));
+        return it == _tensor_index.end() ? nullptr : it->second;
+    }
     const GGUFMetadata& metadata() const { return _metadata; }
-
     //打印kv和tensor相关信息
     void print(size_t tensor_limit = 0) const;
 private:
@@ -162,6 +204,7 @@ private:
     GGUFHeader _gguf_header;
     GGUFMetadata _metadata;
     std::vector<TensorInfo> _tensors;
+    std::unordered_map<std::string, TensorInfo*> _tensor_index; //方便load_weight
     MappedFile _file;
     uint32_t _alignment = 32;           // general.alignment，数据区对齐，默认 32
     size_t   _data_region_offset = 0;   // 数据区起始（相对文件头）

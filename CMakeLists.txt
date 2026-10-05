@@ -10,6 +10,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # 核心库（src 下的所有 .cpp，除了 main.cpp）
 add_library(inferllm STATIC
     src/gguf_parser.cpp
+    src/util.cpp
+    src/model.cpp
 )
 
 target_include_directories(inferllm PUBLIC include)

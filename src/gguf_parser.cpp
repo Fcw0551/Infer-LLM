@@ -1,4 +1,4 @@
-#include "../include/gguf_parser.h"
+#include "../include/gguf_parser.hpp"
 #include <cstdio>
 std::expected<MappedFile, std::error_code> MappedFile::open(const std::string& path){
     //open file
@@ -267,7 +267,7 @@ std::expected<void, std::error_code>  GGUFContext::parser_tensorInfos(std::span<
         auto type = read_pod<uint32_t>(cur);
         if (!type)
             return std::unexpected(type.error());
-        info._type = static_cast<TensorType>(*type);
+        info._type = static_cast<DataType>(*type);
 
         //offset
         auto offset = read_pod<uint64_t>(cur);
@@ -276,12 +276,16 @@ std::expected<void, std::error_code>  GGUFContext::parser_tensorInfos(std::span<
         info._offset = *offset;
 
         _tensors.push_back(std::move(info));
+        _tensor_index[info._name]=&_tensors.back();
     }
-    //整个整晚之后，要进行一个data_offset
+    //整个弄完之后，要进行一个data_offset
     size_t consumed = cur.data() - _file.view().data();
     _data_region_offset = (consumed + _alignment - 1) / _alignment * _alignment;
     return {};
 }
+
+
+
 
 
 //-----------------打印相关------------------
