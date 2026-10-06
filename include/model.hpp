@@ -7,7 +7,6 @@
 #include <iostream>
 #include "gguf_parser.hpp"
 #include "tensor.hpp"
-#include "../include/models/Qwen3.hpp"
 //model name……
 struct HParams {
     std::string arch="";              // "llama", "internlm2", "qwen2"
@@ -81,7 +80,7 @@ public:
     //加载权重
     std::expected<void,std::error_code> load_weight();
     //不同的模型构建计算图的方式不同
-    //virtual std::expected<Graph, std::error_code> build_graph() = 0;
+    virtual std::expected<void,std::error_code> build_graph() = 0;
 };
 
 
@@ -98,7 +97,7 @@ using Creator = std::function<std::unique_ptr<ModelBase>(GGUFContext&&)>;
     void register_arch(std::string arch, Creator creator);
 
     //根据架构名找到注册的模型实例
-    std::expected<Creator, std::error_code>create(std::string& arch) const;
+    std::expected<Creator, std::error_code>create(const std::string& arch) const;
 
     //列出所有已注册的架构
     std::vector<std::string> supported_arches() const;

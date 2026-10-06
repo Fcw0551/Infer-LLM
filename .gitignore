@@ -1,5 +1,5 @@
 # 模型权重目录
-models/
+models
 
 # 权重文件（防止有人把 gguf 放到别处）
 *.gguf

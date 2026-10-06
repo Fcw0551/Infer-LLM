@@ -1,4 +1,6 @@
 #include "../include/model.hpp"
+#include "../include/models/internLm2.hpp"
+#include "../include/models/Qwen3.hpp"
 
 //创建全局单例
 ModelRegistry& ModelRegistry::instance(){
@@ -31,7 +33,7 @@ std::vector<std::string> ModelRegistry::supported_arches() const{
 
 
 //------------------------ModelBase--------------------
-static std::expected<std::unique_ptr<ModelBase>, std::error_code> load_model(GGUFContext&& gguf){
+std::expected<std::unique_ptr<ModelBase>, std::error_code> ModelBase::load_model(GGUFContext&& gguf){
     //先查模型的架构
     auto arch=gguf.metadata().get_meta<std::string>("general.architecture");
     if(!arch){
@@ -41,12 +43,12 @@ static std::expected<std::unique_ptr<ModelBase>, std::error_code> load_model(GGU
     if(!Creator){
         return std::unexpected(Creator.error());
     }
-    return *Creator(gguf);
+    return (*Creator)(std::move(gguf));
 }
 
 
 
-std::expected<void,std::error_code> ModelBase::load__hparams(){
+std::expected<void,std::error_code> ModelBase::load_hparams(){
     // --- 读取基础全局KV ---
     auto arch_exp = _gguf.metadata().get_meta<std::string>("general.architecture");
     if (!arch_exp) {
@@ -117,7 +119,7 @@ std::expected<void,std::error_code> ModelBase::load__hparams(){
     _hparams.n_layer = *n_layer_exp;
     _hparams.n_head = *n_head_exp;
     _hparams.n_head_kv = *n_head_kv_exp;
-    _hparams.n_ctx_train = *ctx_exp;
+    _hparams.n_ctx_train = *n_ctx_exp;
     _hparams.n_ff = *n_ff_exp;
 
     //---自动计算每个头维度 n_embd_head ---
@@ -140,7 +142,7 @@ std::expected<void,std::error_code> ModelBase::load__hparams(){
 std::expected<void,std::error_code> ModelBase::load_weight(){
 
     //初始化Weights的layers数组，层数等于_hparams.n_layer
-    _weights.layers.resize(__hparams.n_layer);
+    _weights.layers.resize(_hparams.n_layer);
 
     //辅助lambda：根据名字从GGUF找TensorInfo，创建Tensor，存入pool+weights.map
     auto create_tensor = [this](std::string_view tensor_name) -> std::expected<Tensor*, std::error_code>
@@ -179,7 +181,7 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
     }
 
     //逐层加载每一层LayerWeights
-    for (size_t layer_idx = 0; layer_idx < __hparams.n_layer; ++layer_idx)
+    for (size_t layer_idx = 0; layer_idx < _hparams.n_layer; ++layer_idx)
     {
         auto& lw = _weights.layers[layer_idx];
         std::string prefix = "blk." + std::to_string(layer_idx) + ".";
@@ -288,16 +290,16 @@ void register_Qwen3(){
             return std::make_unique<Qwen3Model>(std::move(ctx));
         });
 }
-void register_internLm2(){
-    ModelRegistry::instance().register_arch("internLm2",
+void register_internlm2(){
+    ModelRegistry::instance().register_arch("internlm2",
         [](GGUFContext&& ctx) -> std::unique_ptr<ModelBase> {
-            return std::make_unique<internLm2Model>(std::move(ctx));
+            return std::make_unique<internlm2Model>(std::move(ctx));
         });
 }
 
 void register_all_models() {
 
     register_Qwen3();
-    //register_internLm2();
+    register_internlm2();
     //register_llama();
 }
