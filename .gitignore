@@ -1,5 +1,5 @@
-# 模型权重目录
-models
+# 权重：只忽略【根目录下】的models文件夹
+/models/
 
 # 权重文件（防止有人把 gguf 放到别处）
 *.gguf
@@ -18,6 +18,5 @@ cmake-build-*/
 
 #测试
 test/
-
 include/log.h
 src/log.cpp
