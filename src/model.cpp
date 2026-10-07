@@ -256,9 +256,9 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
             if (!exp)
                 return std::unexpected(exp.error());
             qn = *exp;
+            qn->layer=layer_idx;
+            qn->tensorRole=TENSOR_ROLE_WEIGHT;
         }
-        qn->layer=layer_idx;
-        qn->tensorRole=TENSOR_ROLE_WEIGHT;
         lw.attn_q_norm = qn;
 
         Tensor *kn = nullptr;
@@ -269,9 +269,9 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
             if (!exp)
                 return std::unexpected(exp.error());
             kn = *exp;
+            kn->layer=layer_idx;
+            kn->tensorRole=TENSOR_ROLE_WEIGHT;
         }
-        kn->layer=layer_idx;
-        kn->tensorRole=TENSOR_ROLE_WEIGHT;
         lw.attn_k_norm = kn;
 
     }

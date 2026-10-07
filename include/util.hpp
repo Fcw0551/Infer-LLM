@@ -4,7 +4,7 @@
 #define GGUF_MAX_DIMS 4
 #define TENSOR_MAX_DIMS 4
 #define TENSOR_MAX_SRC 4
-
+#define OP_PARAMS_MAX_DIMS 4
 // types that can be stored as GGUF KV data
 enum GGUFType {
         GGUF_TYPE_UINT8   = 0,
@@ -71,7 +71,7 @@ enum DataType {
         GGML_TYPE_COUNT   = 43, //作为一个标识的
 };
 
-enum TensorRole:uint8_t{
+enum class TensorRole:uint8_t{
     TENSOR_ROLE_NONE       = 0,
     TNESOR_ROLE_INPUT      = 1 << 0,
     TENSOR_ROLE_OUTPUT     = 1 << 1,    
@@ -81,14 +81,14 @@ enum TensorRole:uint8_t{
 };
 
 //算子类型
-enum OperationType {
+enum class OperationType {
         GGML_OP_NONE = 0,
 
         GGML_OP_DUP,
         GGML_OP_ADD,
         GGML_OP_ADD_ID,
         GGML_OP_ADD1,
-        GGML_OP_ACC,
+        GGML_OP_ACC, 
         GGML_OP_SUB,
         GGML_OP_MUL,
         GGML_OP_DIV,
@@ -196,7 +196,7 @@ enum OperationType {
         GGML_OP_COUNT,
 };
 
-enum Device{
+enum class Device:uint8_t{
     CPU=0,
     CUDA=1,
     SYCL=2,
