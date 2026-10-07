@@ -6,7 +6,7 @@ public:
     internlm2Model(GGUFContext&& gguf) 
     : ModelBase(std::move(gguf))
     {}
-    virtual std::expected<void,std::error_code> build_graph(){
+    virtual std::expected<Graph,std::error_code> build_graph(){
         std::cout<<"internlm2Model build_graph"<<std::endl;
     }
 };

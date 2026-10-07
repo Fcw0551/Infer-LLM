@@ -6,5 +6,5 @@ public:
     Qwen3Model(GGUFContext&& gguf) 
     : ModelBase(std::move(gguf))
     {}
-    virtual std::expected<void,std::error_code> build_graph();
+    virtual std::expected<Graph,std::error_code> build_graph(GraphContext& g_ctx) const;
 };
