@@ -39,8 +39,7 @@ public:
 
     // 注意力
     static Tensor* soft_max(Graph& g, Tensor* x, Tensor* mask, float scale);
-    static Tensor* flash_attn(Graph& g, Tensor* q, Tensor* k, Tensor* v,
-                              const AttnParams& p);
+    static Tensor* flash_attn(Graph& g, Tensor* q, Tensor* k, Tensor* v, const AttnParams& p);
 
     // 索引
     // table: [n_embd, n_vocab], indices: [n_tokens] → out: [n_embd, n_tokens]

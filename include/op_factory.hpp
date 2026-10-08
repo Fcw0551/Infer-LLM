@@ -36,8 +36,7 @@ public:
     static Tensor* gelu(Graph& g, Tensor* x);
 
     // 位置编码 
-    // freqs: 预计算的 sin/cos 表，作为 src[2]
-    static Tensor* rope(Graph& g, Tensor* x, Tensor* pos, Tensor* freqs, float theta);
+    static Tensor* rope(Graph& g, Tensor* x, Tensor* rope_theta_table);
 
     // 注意力
     static Tensor* soft_max(Graph& g, Tensor* x, Tensor* mask, float scale);

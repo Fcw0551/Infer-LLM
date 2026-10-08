@@ -16,6 +16,7 @@ int main(){
     
     //要构造一个graph context
     GraphContext gc;
+    //缓存rpoe表
     gc.get_rope_theta_table(qwen3._hparams.rope_theta,qwen3._hparams.n_embd_head,qwen3._hparams.n_ctx_train);
 
     //建图
