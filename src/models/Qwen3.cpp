@@ -2,7 +2,7 @@
 #include "../../include/model.hpp"
 
 //Qwen3 建计算图
-virtual std::expected<Graph,std::error_code> Qwen3Model::build_graph(const GraphContext& g_ctx) const{
+std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ctx) const override{
         std::cout<<"qwen3Model build_graph start........"<<std::endl;
         
         Graph g;                                                        //后面返回出去tensor的生命依旧被引用，只有全部被析构的时候才没
@@ -12,6 +12,7 @@ virtual std::expected<Graph,std::error_code> Qwen3Model::build_graph(const Graph
         Tensor* input_token=g_ctx.get_input_tokens();
         Tensor* token_embd=_weights.token_embd;
         embedding(g,input_token,token_embd);                            //embedding
-
+        
+        return g;
         std::cout<<"qwen3Model build_graph end........"<<std::endl;
 }

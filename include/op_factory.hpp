@@ -55,7 +55,7 @@ public:
     static Tensor* view(Graph& g, Tensor* x, std::initializer_list<int64_t> shape);
 
 private:
-    // 唯一创建中间张量的地方
+    // 唯一创建中间张量的地方,生命周期交给graph，graph析构时释放
     static Tensor* make(Graph& g, DType type,
                         std::initializer_list<int64_t> shape,
                         std::string_view name);

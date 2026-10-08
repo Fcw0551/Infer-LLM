@@ -12,6 +12,7 @@ add_library(inferllm STATIC
     src/gguf_parser.cpp
     src/util.cpp
     src/model.cpp
+    src/models/Qwen3.cpp
 )
 
 target_include_directories(inferllm PUBLIC include)

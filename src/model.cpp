@@ -191,32 +191,32 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
             auto q_exp = create_tensor(prefix + "attn_q.weight");
             if (!q_exp) return std::unexpected(q_exp.error());
             (*q_exp)->layer=layer_idx;
-            (*q_exp)->tensorRole=TENSOR_ROLE_WEIGHT;
+            (*q_exp)->tensorRole=TensorRole::TENSOR_ROLE_WEIGHT;
             lw.wq = *q_exp;
             
 
             auto k_exp = create_tensor(prefix + "attn_k.weight");
             if (!k_exp) return std::unexpected(k_exp.error());
             (*k_exp)->layer=layer_idx;
-            (*k_exp)->tensorRole=TENSOR_ROLE_WEIGHT;
+            (*k_exp)->tensorRole=TensorRole::TENSOR_ROLE_WEIGHT;
             lw.wk = *k_exp;
 
             auto v_exp = create_tensor(prefix + "attn_v.weight");
             if (!v_exp) return std::unexpected(v_exp.error());
             (*v_exp)->layer=layer_idx;
-            (*v_exp)->tensorRole=TENSOR_ROLE_WEIGHT;
+            (*v_exp)->tensorRole=TensorRole::TENSOR_ROLE_WEIGHT;
             lw.wv = *v_exp;
 
             auto wo_exp = create_tensor(prefix + "attn_output.weight");
             if (!wo_exp) return std::unexpected(wo_exp.error());
             (*wo_exp)->layer=layer_idx;
-            (*wo_exp)->tensorRole=TENSOR_ROLE_WEIGHT;
+            (*wo_exp)->tensorRole=TensorRole::TENSOR_ROLE_WEIGHT;
             lw.wo = *wo_exp;
 
             auto attn_norm_exp = create_tensor(prefix + "attn_norm.weight");
             if (!attn_norm_exp) return std::unexpected(attn_norm_exp.error());
             (*attn_norm_exp)->layer=layer_idx;
-            (*attn_norm_exp)->tensorRole=TENSOR_ROLE_WEIGHT;
+            (*attn_norm_exp)->tensorRole=TensorRole::TENSOR_ROLE_WEIGHT;
             lw.attn_norm = *attn_norm_exp;
         }
 
@@ -225,25 +225,25 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
             auto ffn_norm_exp = create_tensor(prefix + "ffn_norm.weight");
             if (!ffn_norm_exp) return std::unexpected(ffn_norm_exp.error());
             (*ffn_norm_exp)->layer=layer_idx;
-            (*ffn_norm_exp)->tensorRole=TENSOR_ROLE_WEIGHT;
+            (*ffn_norm_exp)->tensorRole=TensorRole::TENSOR_ROLE_WEIGHT;
             lw.ffn_norm = *ffn_norm_exp;
 
             auto gate_exp = create_tensor(prefix + "ffn_gate.weight");
             if (!gate_exp) return std::unexpected(gate_exp.error());
             (*gate_exp)->layer=layer_idx;
-            (*gate_exp)->tensorRole=TENSOR_ROLE_WEIGHT;
+            (*gate_exp)->tensorRole=TensorRole::TENSOR_ROLE_WEIGHT;
             lw.ffn_gate = *gate_exp;
 
             auto up_exp = create_tensor(prefix + "ffn_up.weight");
             if (!up_exp) return std::unexpected(up_exp.error());
             (*up_exp)->layer=layer_idx;
-            (*up_exp)->tensorRole=TENSOR_ROLE_WEIGHT;
+            (*up_exp)->tensorRole=TensorRole::TENSOR_ROLE_WEIGHT;
             lw.ffn_up = *up_exp;
 
             auto down_exp = create_tensor(prefix + "ffn_down.weight");
             if (!down_exp) return std::unexpected(down_exp.error());
             (*down_exp)->layer=layer_idx;
-            (*down_exp)->tensorRole=TENSOR_ROLE_WEIGHT;
+            (*down_exp)->tensorRole=TensorRole::TENSOR_ROLE_WEIGHT;
             lw.ffn_down = *down_exp;
         }
 
@@ -257,7 +257,7 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
                 return std::unexpected(exp.error());
             qn = *exp;
             qn->layer=layer_idx;
-            qn->tensorRole=TENSOR_ROLE_WEIGHT;
+            qn->tensorRole=TensorRole::TENSOR_ROLE_WEIGHT;
         }
         lw.attn_q_norm = qn;
 
@@ -270,7 +270,7 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
                 return std::unexpected(exp.error());
             kn = *exp;
             kn->layer=layer_idx;
-            kn->tensorRole=TENSOR_ROLE_WEIGHT;
+            kn->tensorRole=TensorRole::TENSOR_ROLE_WEIGHT;
         }
         lw.attn_k_norm = kn;
 

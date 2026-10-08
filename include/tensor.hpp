@@ -10,6 +10,18 @@ struct Tensor{
     ,dataType(info->_type)
     ,dims(info->_dims)
     {}
+    Tensor(std::string name,DataType type,std::initializer_list<uint64_t> shape)
+    :name(name)
+    ,dataType(type)
+    {
+        size_t i=0;
+        for(auto&e:shape){
+            if(i>=TENSOR_MAX_DIMS){
+                break;
+            }
+            dims[i++]=e;
+        }
+    }
     std::string name;                                                           //名字
     int layer;                                                                  //第几层
     uint64_t offset;                                                            //数据在内存当中的偏移量
