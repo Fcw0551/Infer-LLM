@@ -11,7 +11,7 @@
 #include "util.hpp"
 //model name……
 struct HParams {
-    std::string arch="";              // "llama", "internlm2", "qwen2"
+    std::string arch="";           // "llama", "internlm2", "qwen2"
     std::string name="";            
     uint32_t n_vocab = 0;          // 词表大小（决定 embedding 行数）
     uint32_t n_embd = 0;           // 隐藏层维度
@@ -68,7 +68,7 @@ struct Weights {
 
 
 class ModelBase{
-private:
+protected:
     GGUFContext _gguf;                                 //GGUF文件
     HParams _hparams;                                  //超参数  ：模型是什么
     Weights _weights;                                  //权重视图：模型有什么   
@@ -82,7 +82,7 @@ public:
     //加载权重
     std::expected<void,std::error_code> load_weight();
     //不同的模型构建计算图的方式不同
-    virtual std::expected<Graph,std::error_code>build_graph(GraphContext& g_ctx) const = 0;
+    virtual std::expected<Graph, std::error_code> build_graph(GraphContext& g_ctx) const=0;
 };
 
 

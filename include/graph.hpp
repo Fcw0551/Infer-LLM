@@ -1,14 +1,21 @@
 #pragma once
 #include <unordered_set>
-#include <hash>
 #include <memory>
 #include <system_error>
+#include <functional>
+#include <cmath>
+#include "tensor.hpp"
 class Graph {
 public:
     // 构建 API 
     Tensor* add_node(Tensor* t);
-    void mark_input(Tensor* t);
-    void mark_output(Tensor* t);
+    Tensor* add_node(std::unique_ptr<Tensor> t);
+    void mark_input(Tensor* t){
+        _inputs.push_back(t);
+    }
+    void mark_output(Tensor* t){
+        _outputs.push_back(t);
+    }
 
     // 执行
     std::expected<void, std::error_code> compute(Device& backend);
@@ -59,11 +66,11 @@ public:
 
     // RoPE 频率表缓存
     // 返回 [n_ctx, head_dim/2] 的 θ 表，每行是 pos * freq_i
-    Tensor* get_rope_theta_table(float theta_base,uint32_t head_dim,uint32_t n_ctx);
+    std::expected<Tensor *, std::error_code> get_rope_theta_table(float theta_base,uint32_t head_dim,uint32_t n_ctx);
 
     //  张量所有权池
     // GraphContext 内部创建的张量（输入张量、freqs）都挂在这
-    Tensor *make_tensor(DataType type, std::initializer_list<int64_t> shape,std::string name);
+    Tensor *make_tensor(std::string name, DataType type, std::initializer_list<int64_t> shape);
 
 private:
     // 输入
@@ -92,7 +99,7 @@ private:
             return h;
         }
     };
-    std::unordered_map<RopeKey, Tensor* , RopeKeyHash> _rope_cache;
+    std::unordered_map<RopeKey, Tensor* , RopeKeyHash> _rope_theta_cache;
 
     // 所有权池
     // 所有 GraphContext 创建的张量放这里，析构时统一释放

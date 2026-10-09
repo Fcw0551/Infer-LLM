@@ -9,10 +9,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # 核心库（src 下的所有 .cpp，除了 main.cpp）
 add_library(inferllm STATIC
-    src/gguf_parser.cpp
-    src/util.cpp
-    src/model.cpp
     src/models/Qwen3.cpp
+    src/gguf_parser.cpp
+    src/graph.cpp
+    src/log.cpp
+    src/model.cpp
+    src/op_factory.cpp
+    src/util.cpp
 )
 
 target_include_directories(inferllm PUBLIC include)
@@ -22,6 +25,6 @@ target_compile_options(inferllm PRIVATE -Wall -Wextra)
 add_executable(inferllm_main src/main.cpp)
 target_link_libraries(inferllm_main PRIVATE inferllm)
 
-# # 测试程序
-# add_executable(test_mmap test/test_mmap.cpp)
-# target_link_libraries(test_mmap PRIVATE inferllm)
+# 测试程序
+add_executable(test_qwen3 test/test_qwen3_build_graph.cpp)
+target_link_libraries(test_qwen3 PRIVATE inferllm)

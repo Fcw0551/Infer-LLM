@@ -170,14 +170,18 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
         auto embd_exp = create_tensor("token_embd.weight");
         if (!embd_exp) return std::unexpected(embd_exp.error());
         _weights.token_embd = *embd_exp;
-
+        std::cout<<"_weights.token_embd"<<_weights.token_embd<<std::endl;
         auto out_norm_exp = create_tensor("output_norm.weight");
         if (!out_norm_exp) return std::unexpected(out_norm_exp.error());
         _weights.output_norm = *out_norm_exp;
 
         auto out_exp = create_tensor("output.weight");
-        if (!out_exp) return std::unexpected(out_exp.error());
-        _weights.output = *out_exp;
+        if (!out_exp) {
+            _weights.output = _weights.token_embd;  // Qwen3 等 weight tying 模型：output.weight == token_embd.weight
+        }
+        else{
+            _weights.output = *out_exp;
+        }
     }
 
     //逐层加载每一层LayerWeights
@@ -285,7 +289,7 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
 
 //----------------------注册表------------------------
 void register_Qwen3(){
-    ModelRegistry::instance().register_arch("Qwen3",
+    ModelRegistry::instance().register_arch("qwen3",
         [](GGUFContext&& ctx) -> std::unique_ptr<ModelBase> {
             return std::make_unique<Qwen3Model>(std::move(ctx));
         });

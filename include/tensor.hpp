@@ -1,5 +1,6 @@
 #pragma once
 #include "util.hpp"
+#include "gguf_parser.hpp"
 #include <string>
 
 //tensor算子的定义
@@ -10,8 +11,8 @@ struct Tensor{
     ,dataType(info->_type)
     ,dims(info->_dims)
     {}
-    Tensor(std::string name,DataType type,std::initializer_list<uint64_t> shape)
-    :name(name)
+    Tensor(std::string_view name,DataType type,std::initializer_list<int64_t> shape)
+    :name(std::string(name))
     ,dataType(type)
     {
         size_t i=0;
@@ -29,7 +30,7 @@ struct Tensor{
     std::array<uint64_t,TENSOR_MAX_DIMS> dims{0,0,0,0};                         //维度
     std::array<uint64_t,TENSOR_MAX_DIMS> strides{0,0,0,0};                      //步长
     std::array<Tensor*,TENSOR_MAX_SRC> src{nullptr,nullptr,nullptr,nullptr};    //某个tensor由哪个tensor计算来
-    std::array<uint64_t,OP_PARAMS_MAX_DIMS> op_params{0,0,0,0};                      //算子需要的额外的参数
+    int32_t op_params[OP_PARAMS_MAX * sizeof(int32_t)];                         //算子需要的额外的参数 4*4=16字节
     enum DataType dataType;                                                     //数据类型
     enum TensorRole tensorRole;                                                 //tensor是作为输入输出还是中间结点
     enum OperationType op;                                                      //算子类型

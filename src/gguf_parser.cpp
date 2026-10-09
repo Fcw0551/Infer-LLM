@@ -239,6 +239,7 @@ std::expected<void, std::error_code> GGUFContext:: parser_metadata(std::span<con
     return {};
 }
 std::expected<void, std::error_code>  GGUFContext::parser_tensorInfos(std::span<const std::byte>&cur){
+    _tensors.reserve(_gguf_header.tensor_count);   
     for (uint64_t i = 0; i < _gguf_header.tensor_count; ++i){
         //[uint64_t][name][uint32][uint64][uint32][uint64]
         TensorInfo info;
@@ -276,7 +277,7 @@ std::expected<void, std::error_code>  GGUFContext::parser_tensorInfos(std::span<
         info._offset = *offset;
 
         _tensors.push_back(std::move(info));
-        _tensor_index[info._name]=&_tensors.back();
+        _tensor_index[_tensors.back()._name]=&_tensors.back();   //info 已被 move 走，名字要从向量里取
     }
     //整个弄完之后，要进行一个data_offset
     size_t consumed = cur.data() - _file.view().data();

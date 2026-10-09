@@ -1,134 +1,56 @@
-// inferllm/log.h
-// 日志系统：多级别、线程安全、printf 格式化、终端着色、自定义回调
-// 设计参考 llama.cpp 的全局日志回调 (llama_log_set / ggml_log_set)
 #pragma once
-
-#include <cstdint>
+#include <climits>
 #include <cstddef>
+#include <expected>
 #include <string>
 #include <string_view>
-#include <functional>
-#include <mutex>
-#include <source_location>
+#include <system_error>
 #include <vector>
-#include <optional>
-#include <thread>
 
-namespace inferllm {
+class Graph;   // 前置声明：log.h 不依赖 graph.hpp，谁用谁自己 include
 
-// 日志级别：数值越大级别越高，低于全局级别的会被过滤
-enum class LogLevel : int {
-    Trace = 0,
-    Debug = 1,
-    Info  = 2,
-    Warn  = 3,
-    Error = 4,
-    Fatal = 5,
-    Count = 6,
-};
-
-const char* log_level_name(LogLevel level) noexcept;
-std::optional<LogLevel> log_level_from_string(std::string_view name) noexcept;
-
-// 传递给回调的完整日志消息
-struct LogMessage {
-    LogLevel       level;
-    std::string    text;
-    std::string    file;        // 不含路径的文件名
-    int            line;
-    std::string    function;
-    int64_t        timestamp_ms; // 进程启动后毫秒数
-    std::thread::id thread_id;
-};
-
-using LogCallback = std::function<void(const LogMessage&)>;
-
-class Logger {
+// 把一张图写成 Graphviz DOT 格式。
+// 生成的文件丢到 https://dreampuf.github.io/GraphvizOnline/ 看，
+// 或本地 `dot -Tsvg graph.dot -o graph.svg`。
+//
+// 两种用法：
+//   1) 高层：DotWriter::dump(g, "qwen3_graph.dot");          // Graph → 文件，一行搞定
+//   2) 底层：DotWriter w("G");
+//            size_t a = w.add_node("input");
+//            size_t b = w.add_node("double");
+//            w.add_edge(a, b);
+//            w.save("tiny.dot");
+class DotWriter {
 public:
-    Logger();
+    explicit DotWriter(std::string graph_name = "G");
 
-    void set_level(LogLevel level) noexcept;
-    LogLevel level() const noexcept;
+    // ---------- 底层 API ----------
+    // 加一个点，返回它的编号（从 0 开始），供 add_edge 用。
+    // label 里含 " \ 换行 也不用管，内部会转义；换行会变成 DOT 里的换行。
+    size_t add_node(std::string_view label, std::string_view attrs = {});
+    // 加一条有向边 from → to。编号越界则忽略（返回 void，不崩）。
+    void   add_edge(size_t from, size_t to, std::string_view attrs = {});
 
-    void set_color_enabled(bool enabled) noexcept;
-    bool color_enabled() const noexcept;
+    // ---------- 落盘 ----------
+    std::expected<void, std::error_code> save(const std::string& path) const;
 
-    void set_timestamp_enabled(bool enabled) noexcept;
-    bool timestamp_enabled() const noexcept;
+    // ---------- 高层 API ----------
+    // 把计算图导出成文件：自己从 outputs()/inputs() 出发沿 src[] 做 DFS，
+    // 不依赖 Graph::build_topo_order（那个还没实现，_nodes/_leafs 目前是空的）。
+    //
+    // layer_lo / layer_hi 是"只画哪几层"的闭区间，用来缩小图：
+    //   dump(g, path)            → 默认 [0, INT_MAX]，整张图，行为和加这个参数之前一致
+    //   dump(g, path, 0, 1)      → 只画第 0、1 层
+    // 层的判定靠解析张量名字（Tensor::layer 只有权重被赋过值，中间张量是垃圾值，不能用）：
+    //   "blk.<N>.xxx" → N     "<前缀><N>" → N     解析不出（如 logits/rope_theta）→ 全局节点，永远保留
+    static std::expected<void, std::error_code> dump(const Graph& g, const std::string& path,
+                                                     int layer_lo = 0, int layer_hi = INT_MAX);
 
-    void set_location_enabled(bool enabled) noexcept;
-    bool location_enabled() const noexcept;
-
-    // 设置主回调，设置后不再输出到 stderr，传 nullptr 恢复默认
-    void set_callback(LogCallback callback) noexcept;
-
-    // 添加额外回调（与默认输出并存，可用于同时写文件）
-    size_t add_callback(LogCallback callback);
-    void remove_callback(size_t id);
-
-    // 直接输出字符串
-    void log(LogLevel level,
-             std::string_view text,
-             std::source_location loc = std::source_location::current());
-
-    // printf 风格格式化，GCC/Clang 会做编译期格式串检查
-    void logf(LogLevel level,
-              std::source_location loc,
-              const char* fmt, ...)
-#if defined(__GNUC__) || defined(__clang__)
-        __attribute__((format(printf, 4, 5)))
-#endif
-        ;
-
-    bool should_log(LogLevel level) const noexcept;
+    size_t node_count() const noexcept { return _nodes.size(); }
+    size_t edge_count() const noexcept { return _edges.size(); }
 
 private:
-    void emit(const LogMessage& msg);
-    void emit_default(const LogMessage& msg);
-
-    mutable std::mutex mutex_;
-    LogLevel  level_             = LogLevel::Info;
-    bool      color_enabled_     = true;
-    bool      timestamp_enabled_ = true;
-    bool      location_enabled_  = true;
-    LogCallback primary_callback_;
-    std::vector<std::pair<size_t, LogCallback>> extra_callbacks_;
-    size_t  next_callback_id_ = 1;
-    int64_t start_time_ms_    = 0;
+    std::string _name;                 // digraph 的名字
+    std::vector<std::string> _nodes;   // 每个点一行，不含 digraph{} 外壳
+    std::vector<std::string> _edges;   // 每条边一行
 };
-
-namespace log {
-Logger& logger() noexcept;
-inline void set_level(LogLevel level)    { logger().set_level(level); }
-inline void set_color(bool enabled)      { logger().set_color_enabled(enabled); }
-inline void set_callback(LogCallback cb) { logger().set_callback(std::move(cb)); }
-inline bool should_log(LogLevel level)   { return logger().should_log(level); }
-} // namespace log
-
-// 用户主要使用这些宏
-#define LOG_TRACE(...) inferllm::log::logger().logf(inferllm::LogLevel::Trace, std::source_location::current(), __VA_ARGS__)
-#define LOG_DEBUG(...) inferllm::log::logger().logf(inferllm::LogLevel::Debug, std::source_location::current(), __VA_ARGS__)
-#define LOG_INFO(...)  inferllm::log::logger().logf(inferllm::LogLevel::Info,  std::source_location::current(), __VA_ARGS__)
-#define LOG_WARN(...)  inferllm::log::logger().logf(inferllm::LogLevel::Warn,  std::source_location::current(), __VA_ARGS__)
-#define LOG_ERROR(...) inferllm::log::logger().logf(inferllm::LogLevel::Error, std::source_location::current(), __VA_ARGS__)
-#define LOG_FATAL(...) inferllm::log::logger().logf(inferllm::LogLevel::Fatal, std::source_location::current(), __VA_ARGS__)
-
-// 条件日志
-#define LOG_TRACE_IF(cond, ...) do { if (cond) LOG_TRACE(__VA_ARGS__); } while(0)
-#define LOG_DEBUG_IF(cond, ...) do { if (cond) LOG_DEBUG(__VA_ARGS__); } while(0)
-#define LOG_INFO_IF(cond, ...)  do { if (cond) LOG_INFO(__VA_ARGS__);  } while(0)
-#define LOG_WARN_IF(cond, ...)  do { if (cond) LOG_WARN(__VA_ARGS__);  } while(0)
-#define LOG_ERROR_IF(cond, ...) do { if (cond) LOG_ERROR(__VA_ARGS__); } while(0)
-
-// Release 模式下零开销的调试日志
-#ifdef NDEBUG
-#define LOG_DTRACE(...) ((void)0)
-#define LOG_DDEBUG(...) ((void)0)
-#define LOG_DINFO(...)  ((void)0)
-#else
-#define LOG_DTRACE(...) LOG_TRACE(__VA_ARGS__)
-#define LOG_DDEBUG(...) LOG_DEBUG(__VA_ARGS__)
-#define LOG_DINFO(...)  LOG_INFO(__VA_ARGS__)
-#endif
-
-} // namespace inferllm

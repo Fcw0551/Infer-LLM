@@ -1,44 +1,29 @@
 #pragma once
+#include "../include/graph.hpp"
+//------Graph--------
 
-class Graph {
-public:
-    // 构建 API 
-    Tensor* add_node(Tensor* t);
-    void mark_input(Tensor* t);
-    void mark_output(Tensor* t);
+// 构建 API
+Tensor *Graph::add_node(Tensor *t){
+    Tensor* raw = t;
+    _owned.push_back(std::unique_ptr<Tensor>(t));   
+    return raw;
+}
+Tensor *Graph::add_node(std::unique_ptr<Tensor> t){
+    Tensor *raw = t.get();
+    _owned.push_back(std::move(t)); // 接管所有权
+    return raw;
+}
 
-    // 执行
-    std::expected<void, std::error_code> compute(Device& backend);
 
-    // 访问
-    const std::vector<Tensor*>& inputs()  const { return _inputs; }
-    const std::vector<Tensor*>& outputs() const { return _outputs; }
-    const std::vector<Tensor*>& nodes()   const { return _nodes; }   // 拓扑序
-    const std::vector<Tensor*>& leafs()   const { return _leafs; }
+// 执行
+std::expected<void, std::error_code> compute(Device &backend);
 
-private:
-    void build_topo_order(Tensor* t);
 
-    // 所有权
-    std::vector<std::unique_ptr<Tensor>> _owned;   // 所有中间张量的所有权
 
-    //  边界
-    std::vector<Tensor*> _inputs;                  // build_graph标记的输入
-    std::vector<Tensor*> _outputs;                 // build_graph标记的输出
-
-    // 拓扑排序结果
-    std::vector<Tensor*> _nodes;                   // 按拓扑序排列的内部节点
-    std::vector<Tensor*> _leafs;                   // 所有叶子节点（权重、输入）
-
-    // 拓扑排序的临时状态
-    std::unordered_set<Tensor*> _visited;          // DFS 去重
-
-};
 
 
 //承担动态资源的集合
 //-------class GraphContext---------
-
 
 // RoPE 频率表缓存
 // 返回 [n_ctx, head_dim/2] 的 θ 表，每行是 pos * freq_i
@@ -51,7 +36,7 @@ std::expected<Tensor *, std::error_code> GraphContext::get_rope_theta_table(floa
     const uint32_t half = head_dim / 2;
 
     // 创建张量[half, n_ctx]
-    Tensor *t = make_tensor(DataType::GGML_TYPE_F32, {half, n_ctx, 1, 1}, "rope_theta");
+    Tensor *t = make_tensor("rope_theta",DataType::GGML_TYPE_F32, {half, n_ctx, 1, 1});
 
     // 分配 data 纯数据块
     t->data = std::malloc(half * n_ctx * sizeof(float));
@@ -81,9 +66,10 @@ std::expected<Tensor *, std::error_code> GraphContext::get_rope_theta_table(floa
 
 // 张量所有权池
 // GraphContext 内部创建的张量（输入张量、rope_theta表）都挂在这
-Tensor *GraphContext::make_tensor(, std::string name, DataType type, std::initializer_list<int64_t> shape){
+Tensor *GraphContext::make_tensor(std::string name, DataType type, std::initializer_list<int64_t> shape){
     std::unique_ptr<Tensor> p = std::make_unique<Tensor>(name, type, shape);
-    _owned.push_back(p);
-    return p;
+    Tensor* raw=p.get();
+    _owned.push_back(std::move(p));  
+    return raw;
 }
 

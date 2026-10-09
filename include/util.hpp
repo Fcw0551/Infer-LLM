@@ -4,7 +4,7 @@
 #define GGUF_MAX_DIMS 4
 #define TENSOR_MAX_DIMS 4
 #define TENSOR_MAX_SRC 4
-#define OP_PARAMS_MAX_DIMS 4
+#define OP_PARAMS_MAX 4
 // types that can be stored as GGUF KV data
 enum GGUFType {
         GGUF_TYPE_UINT8   = 0,
@@ -81,7 +81,7 @@ enum class TensorRole:uint8_t{
 };
 
 //算子类型
-enum class OperationType {
+enum class OperationType:uint32_t {
         GGML_OP_NONE = 0,
 
         GGML_OP_DUP,
@@ -195,6 +195,33 @@ enum class OperationType {
 
         GGML_OP_COUNT,
 };
+ enum class OperationType_unary_op: uint32_t {
+        GGML_UNARY_OP_ABS,
+        GGML_UNARY_OP_SGN,
+        GGML_UNARY_OP_NEG,
+        GGML_UNARY_OP_STEP,
+        GGML_UNARY_OP_TANH,
+        GGML_UNARY_OP_ELU,
+        GGML_UNARY_OP_RELU,
+        GGML_UNARY_OP_SIGMOID,
+        GGML_UNARY_OP_GELU,
+        GGML_UNARY_OP_GELU_QUICK,
+        GGML_UNARY_OP_SILU,
+        GGML_UNARY_OP_HARDSWISH,
+        GGML_UNARY_OP_HARDSIGMOID,
+        GGML_UNARY_OP_EXP,
+        GGML_UNARY_OP_EXPM1,
+        GGML_UNARY_OP_SOFTPLUS,
+        GGML_UNARY_OP_GELU_ERF,
+        GGML_UNARY_OP_XIELU,
+        GGML_UNARY_OP_FLOOR,
+        GGML_UNARY_OP_CEIL,
+        GGML_UNARY_OP_ROUND,
+        GGML_UNARY_OP_TRUNC,
+
+        GGML_UNARY_OP_COUNT,
+};
+
 
 enum class Device:uint8_t{
     CPU=0,

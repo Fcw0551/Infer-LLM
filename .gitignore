@@ -18,5 +18,6 @@ cmake-build-*/
 
 #测试
 test/
-include/log.h
-src/log.cpp
+
+#dot图
+*.dot
