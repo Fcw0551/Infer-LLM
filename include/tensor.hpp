@@ -34,7 +34,7 @@ struct Tensor{
     enum DataType dataType;                                                     //数据类型
     enum TensorRole tensorRole;                                                 //tensor是作为输入输出还是中间结点
     enum OperationType op = OperationType::GGML_OP_NONE;                                       //算子类型
-    enum Device device;                                                         //后端
+    enum DeviceType device;                                                         //后端
 
 //---------------------辅助函数-------------------------    
     size_t element_count() const {

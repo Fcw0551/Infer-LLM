@@ -223,11 +223,12 @@ enum class OperationType:uint32_t {
 };
 
 
-enum class Device:uint8_t{
+enum class DeviceType:uint8_t{
     CPU=0,
     CUDA=1,
     SYCL=2,
     VULKAN=3,
+    METAL=4,
 };
 
 

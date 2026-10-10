@@ -21,7 +21,7 @@ public:
 
     // 执行
     std::expected<void, std::error_code> compute();
-    std::expected<void, std::error_code> compute(Device& backend);
+    //std::expected<void, std::error_code> compute(Device& backend);
 
     // 访问
     const std::vector<Tensor*>& inputs()  const { return _inputs; }
