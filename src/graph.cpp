@@ -5,18 +5,78 @@
 // 构建 API
 Tensor *Graph::add_node(Tensor *t){
     Tensor* raw = t;
-    _owned.push_back(std::unique_ptr<Tensor>(t));   
+    _owned.push_back(std::unique_ptr<Tensor>(t));
+    _topo=true;   
     return raw;
 }
 Tensor *Graph::add_node(std::unique_ptr<Tensor> t){
     Tensor *raw = t.get();
     _owned.push_back(std::move(t)); // 接管所有权
+    _topo=true;
     return raw;
 }
 
 
 // 执行
-std::expected<void, std::error_code> compute(Device &backend);
+std::expected<void, std::error_code> Graph::compute(){
+    if (_outputs.empty()){
+        return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+    }
+
+    // 图变了，重建拓扑序
+    if (_topo){
+        _visited.clear();
+        _nodes.clear();
+        _leafs.clear();
+
+        for (Tensor *out : _outputs){
+            //从输出结点开始建立拓扑图
+            build_topo_order(out);
+        }
+        _topo = false;
+
+        std::cout << "topo: leafs=" << _leafs.size() << ", nodes=" << _nodes.size() << "\n";
+    }
+
+    //  ---图没变，不需要重建拓扑---
+    
+    // 叶子节点：检查数据是否就绪
+    for (Tensor *leaf : _leafs){
+        if (!leaf->data){
+            return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+        }
+    }
+
+    // 按拓扑序执行内部节点
+    for (Tensor *node : _nodes){
+        // if (auto r = backend.compute(*node); !r){
+        //     return r;
+        // }
+        std::cout<<"正在执行算子："<<node->name<<std::endl;
+    }
+
+    return {};
+}
+
+
+void Graph::build_topo_order(Tensor* t){
+    if (!t) return;
+    if (!_visited.insert(t).second) return; // 已访问过
+
+    // 后序遍历：先处理所有依赖，再处理自己
+    for(auto &e: t->src){
+        if(!e) break;
+        build_topo_order(e);
+    }
+
+    if (t->op == OperationType::GGML_OP_NONE){
+        _leafs.push_back(t); // 叶子：权重、输入
+    }
+    else{
+        _nodes.push_back(t); // 内部节点：按拓扑序排列
+    }
+}
+
 
 
 

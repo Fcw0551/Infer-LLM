@@ -1,5 +1,4 @@
 #include "../../include/models/Qwen3.hpp"
-#include "../../include/log.h"
 
 // Qwen3 建计算图
 std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ctx) const{
@@ -109,15 +108,6 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 
 	// 标记输出
 	g.mark_output(logits);
-
-	// 把计算图导成 dot：丢到 https://dreampuf.github.io/GraphvizOnline/ 看，
-	// 或本地 `dot -Tsvg qwen3_graph.dot -o qwen3_graph.svg`。
-	// 后两个参数是层的闭区间 [lo, hi]：全图 820 个点会把在线渲染器（viz.js 堆只有 16MB）撑爆，
-	// 所以这里只导第 0~1 层；想看全图传 (0, INT_MAX)，只想看某几层就改这两个数。
-	// 失败只是画不出图，不影响推理，所以只警告不上抛。
-	if (auto r = DotWriter::dump(g, "qwen3_graph.dot", 0, 0); !r) {
-		std::cerr << "dump graph failed: " << r.error().message() << std::endl;
-	}
 
 	std::cout << "qwen3Model build_graph end........" << std::endl;
 	return g;

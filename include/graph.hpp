@@ -4,7 +4,9 @@
 #include <system_error>
 #include <functional>
 #include <cmath>
+#include <iostream>
 #include "tensor.hpp"
+#include "util.hpp"
 class Graph {
 public:
     // 构建 API 
@@ -18,6 +20,7 @@ public:
     }
 
     // 执行
+    std::expected<void, std::error_code> compute();
     std::expected<void, std::error_code> compute(Device& backend);
 
     // 访问
@@ -28,6 +31,9 @@ public:
 
 private:
     void build_topo_order(Tensor* t);
+
+    //标记图有没有发生变化
+    bool _topo = false;
 
     // 所有权
     std::vector<std::unique_ptr<Tensor>> _owned;   // 所有中间张量的所有权

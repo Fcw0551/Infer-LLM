@@ -21,6 +21,10 @@ add_library(inferllm STATIC
 target_include_directories(inferllm PUBLIC include)
 target_compile_options(inferllm PRIVATE -Wall -Wextra)
 
+# dot 图的输出目录：和 include/ src/ 同级的 models_dot/（绝对路径，所以在哪个目录跑都一样）
+target_compile_definitions(inferllm PRIVATE
+    INFERLLM_MODELS_DOT_DIR="${CMAKE_SOURCE_DIR}/models_dot")
+
 # 主程序
 add_executable(inferllm_main src/main.cpp)
 target_link_libraries(inferllm_main PRIVATE inferllm)

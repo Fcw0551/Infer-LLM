@@ -4,6 +4,7 @@
 
 #include <cctype>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <unordered_map>
@@ -77,13 +78,6 @@ std::string shape_str(const Tensor* t) {
     return s + "]";
 }
 
-// 叶子判定：所有 src 都为空 —— 权重 / 输入 / 常量都是叶子
-bool is_leaf(const Tensor* t) {
-    for (const Tensor* s : t->src)
-        if (s) return false;
-    return true;
-}
-
 // 从张量名字里解析"第几层"；解析不出来返回 -1，表示全局节点（过滤时永远保留）。
 // 注意：不能读 Tensor::layer —— 那个字段只有权重被赋过值（见 model.cpp 的 create_tensor），
 // OpFactory 建的中间张量是未初始化的垃圾值。所以只能认命名习惯（见 Qwen3.cpp 的 build_graph）：
@@ -133,6 +127,14 @@ void DotWriter::add_edge(size_t from, size_t to, std::string_view attrs) {
 }
 
 std::expected<void, std::error_code> DotWriter::save(const std::string& path) const {
+    // 目录（models_dot/ 之类）不存在就先建出来，省得调用方自己 mkdir。
+    // 建不出来不在这里报错，交给下面的 ofstream 去报，错误信息更准。
+    const std::filesystem::path p(path);
+    if (p.has_parent_path() && !p.parent_path().empty()) {
+        std::error_code ignored;
+        std::filesystem::create_directories(p.parent_path(), ignored);
+    }
+
     std::ofstream f(path, std::ios::out | std::ios::trunc);
     if (!f) return std::unexpected(std::make_error_code(std::errc::io_error));
 
@@ -147,47 +149,27 @@ std::expected<void, std::error_code> DotWriter::save(const std::string& path) co
     return {};
 }
 
+std::string DotWriter::dot_path(std::string_view filename) {
+    // INFERLLM_MODELS_DOT_DIR 由 CMake 传进来（绝对路径）；没定义就用 log.h 里的 "models_dot"
+    return (std::filesystem::path(INFERLLM_MODELS_DOT_DIR) / filename).string();
+}
+
 std::expected<void, std::error_code> DotWriter::dump(const Graph& g, const std::string& path,
                                                      int layer_lo, int layer_hi) {
-    // 起点：输出 + 输入 + 拓扑序节点 + 叶子。
-    // 后两者目前是空的（build_topo_order 还没实现），写好后会自动一起画进来。
-    std::vector<const Tensor*> roots;
-    for (const Tensor* t : g.outputs()) roots.push_back(t);
-    for (const Tensor* t : g.inputs())  roots.push_back(t);
-    for (const Tensor* t : g.nodes())   roots.push_back(t);
-    for (const Tensor* t : g.leafs())   roots.push_back(t);
-
-    if (roots.empty()) {
-        // 一个根都没有，说明图还没连或者没 mark_output，别默默写个空文件
+    // 点直接取自 Graph 建好的拓扑序：叶子/算子已经由 build_topo_order 分好类了，
+    // 这里不再自己判断谁是叶子。所以调用前必须先跑过 Graph::compute()。
+    const std::vector<Tensor*>& leafs = g.leafs();
+    const std::vector<Tensor*>& nodes = g.nodes();
+    if (leafs.empty() && nodes.empty()) {
+        // 拓扑序还没建：图没连、没 mark_output，或者压根没调 compute()。
         return std::unexpected(std::make_error_code(std::errc::invalid_argument));
     }
 
     // 输入/输出集合，只用来着色。
-    // 注意：这里故意不读 tensorRole / layer / op 来判断叶子——
-    // Tensor 的构造函数没设这三个字段，对叶子来说它们是未初始化的垃圾值。
     std::unordered_set<const Tensor*> is_input(g.inputs().begin(), g.inputs().end());
     std::unordered_set<const Tensor*> is_output(g.outputs().begin(), g.outputs().end());
 
-    // 第一步：全图 DFS，只记"发现顺序 + 边表"，先不建点。
-    // 显式栈，免得递归太深。方向是 src → 本节点，也就是数据流动的方向。
-    std::vector<const Tensor*> order;                            // 发现顺序，决定点的编号顺序
-    std::vector<std::pair<const Tensor*, const Tensor*>> edges;  // src -> dst
-    std::unordered_set<const Tensor*> visited;
-
-    std::vector<const Tensor*> stack(roots.begin(), roots.end());
-    while (!stack.empty()) {
-        const Tensor* t = stack.back();
-        stack.pop_back();
-        if (!visited.insert(t).second) continue;   // 已经处理过
-        order.push_back(t);
-        for (const Tensor* s : t->src) {
-            if (!s) continue;
-            edges.emplace_back(s, t);
-            stack.push_back(s);
-        }
-    }
-
-    // 第二步：按层过滤。全局节点（解析不出层号）永远保留，其余要求层号落在 [lo, hi]。
+    // 按层过滤。全局节点（解析不出层号）永远保留，其余要求层号落在 [lo, hi]。
     auto keep = [&](const Tensor* t) {
         const int L = tensor_layer(t->name);
         return L < 0 || (L >= layer_lo && L <= layer_hi);
@@ -196,10 +178,10 @@ std::expected<void, std::error_code> DotWriter::dump(const Graph& g, const std::
     DotWriter w("Graph");
     std::unordered_map<const Tensor*, size_t> ids;
 
-    for (const Tensor* t : order) {
-        if (!keep(t)) continue;
-
-        const bool leaf = is_leaf(t);
+    // 建点。leaf 这个参数直接来自拓扑序的分类，不用再猜。
+    auto emit_node = [&](const Tensor* t, bool leaf) {
+        if (!keep(t)) return;
+        if (ids.count(t)) return;   // 防御：同一个张量只画一次
 
         // 配色：输出红 > 输入绿 > 叶子灰 > 中间节点蓝
         std::string color = leaf ? "#EEEEEE" : "#BBDEFB";
@@ -214,15 +196,26 @@ std::expected<void, std::error_code> DotWriter::dump(const Graph& g, const std::
         if (leaf) attrs += ", shape=ellipse";
 
         ids.emplace(t, w.add_node(label, attrs));
-    }
+    };
 
-    // 第三步：只画两端都留下来的边（被滤掉的邻居会让这条边悬空，直接丢弃）。
-    for (const auto& [src, dst] : edges) {
-        const auto a = ids.find(src);
+    for (const Tensor* t : leafs) emit_node(t, true);
+    for (const Tensor* t : nodes) emit_node(t, false);
+
+    // 建边：只画两端都留下来的（被层过滤掉的邻居会让这条边悬空，直接丢弃）。
+    // 拓扑序保证 src 一定在 dst 之前被访问过，所以这里不需要再排一次序。
+    auto emit_edges = [&](const Tensor* dst) {
         const auto b = ids.find(dst);
-        if (a == ids.end() || b == ids.end()) continue;
-        w.add_edge(a->second, b->second);
-    }
+        if (b == ids.end()) return;
+        for (const Tensor* s : dst->src) {
+            if (!s) continue;
+            const auto a = ids.find(s);
+            if (a == ids.end()) continue;
+            w.add_edge(a->second, b->second);
+        }
+    };
+
+    for (const Tensor* t : leafs) emit_edges(t);
+    for (const Tensor* t : nodes) emit_edges(t);
 
     return w.save(path);
 }

@@ -2,6 +2,8 @@
 #include "../include/model.hpp"
 #include "../include/models/Qwen3.hpp"
 #include "../include/graph.hpp"
+#include "../include/log.h"
+//#include "../include/device.hpp"
 #include <numeric>
 int main(){
     auto gguf=GGUFContext::load("/home/wcf/Infer-LLM/models/Qwen3-0.6B-Q8_0.gguf");
@@ -43,7 +45,18 @@ int main(){
     gc.set_input_tokens(inp_tokens.get());
     gc.set_input_pos(inp_pos.get());
     //建图
-    qwen3->build_graph(gc);
+    auto g=qwen3->build_graph(gc);
+
+    (*g).compute();   // 拓扑序在这一步建好，dump 必须放在它后面
+
+    // 把计算图导成 dot：文件落在 models_dot/qwen3_graph.dot（和 include/ src/ 同级），
+    // 丢到 https://dreampuf.github.io/GraphvizOnline/ 看，或本地 `dot -Tsvg ...`。
+    // 后两个参数是层的闭区间 [lo, hi]：全图 820 个点会把在线渲染器（viz.js 堆只有 16MB）撑爆，
+    // 所以这里只导第 0 层；想看全图传 (0, INT_MAX)，只想看某几层就改这两个数。
+    // 失败只是画不出图，不影响推理，所以只警告不上抛。
+    if (auto r = DotWriter::dump(*g, DotWriter::dot_path("qwen3_graph.dot"), 0, 0); !r) {
+        std::cerr << "dump graph failed: " << r.error().message() << std::endl;
+    }
 
     return 0;
 }
