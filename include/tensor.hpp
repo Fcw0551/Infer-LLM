@@ -33,11 +33,12 @@ struct Tensor{
     int32_t op_params[OP_PARAMS_MAX * sizeof(int32_t)];                         //算子需要的额外的参数 4*4=16字节
     enum DataType dataType;                                                     //数据类型
     enum TensorRole tensorRole;                                                 //tensor是作为输入输出还是中间结点
-    enum OperationType op = OperationType::GGML_OP_NONE;                                       //算子类型
-    enum DeviceType device;                                                         //后端
+    enum OperationType op = OperationType::GGML_OP_NONE;                        //算子类型
+    enum DeviceType device;                                                     //后端
 
 //---------------------辅助函数-------------------------    
-    size_t element_count() const {
+//计算元素数量
+size_t element_count() const {
         size_t n = 1;
         for (size_t i = 0; i < dims.size(); ++i) {
             if(dims[i]!=0)
@@ -46,7 +47,7 @@ struct Tensor{
         }
         return n;
     }
-
+//计算tensor大小
     size_t byte_size() const {
         return element_count() * dataType_size(dataType);
     }
