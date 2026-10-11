@@ -119,3 +119,14 @@ size_t dataType_size(DataType dataType){
             return 0;
     }
 }
+
+
+const char* device_type_name(DeviceType t) {
+    switch (t) {
+    case DeviceType::CPU:    return "CPU";
+    case DeviceType::CUDA:   return "CUDA";
+    case DeviceType::METAL:  return "METAL";
+    case DeviceType::VULKAN: return "VULKAN";
+    default:                 return "UNKNOWN";
+    }
+}

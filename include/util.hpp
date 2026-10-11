@@ -240,3 +240,5 @@ const char* ggml_type_name(DataType t);
 
 
 size_t dataType_size(DataType dataType);
+
+const char* device_type_name(DeviceType t);
