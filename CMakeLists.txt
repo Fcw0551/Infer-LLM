@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # 启用不同后端设备
-option(INFERLLM_WITH_CUDA "Build with CUDA backend" OFF)
+option(INFERLLM_WITH_CUDA "Build with CUDA backend" ON)
 option(INFERLLM_WITH_METAL "Build with Metal backend" OFF)
 
 

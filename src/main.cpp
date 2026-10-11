@@ -63,11 +63,12 @@ int main(){
     register_all_backends();                    //注册后端
     auto& reg=BackendRegistry::instance();
     reg.probe_all();                             //探测
-    auto result=reg.create("cpu");                   //实例化后端
+    auto result=reg.create("cuda:0");                   //实例化后端
     if(!result){
         std::cerr << "出错: " << result.error().message() << "\n";
         return 1;   //
     }
+    reg.print();
     std::unique_ptr<Backend> cpu = std::move(*result);
 
     
