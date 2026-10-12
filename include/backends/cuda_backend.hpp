@@ -1,5 +1,7 @@
 #pragma once 
-#include "../../include/backend.hpp"
+#include "../backend.hpp"
+#include "../util.hpp"
+#include "../tensor.hpp"
 #include <cuda_runtime.h>
 //cuda探测函数
 std::vector<DeviceInfo> probe_cuda_devices();
@@ -20,7 +22,7 @@ public:
         cudaStream_t stream;
         cudaError_t err = cudaStreamCreate(&stream);                //(TODO，只创建了一条)
         if (err != cudaSuccess){
-            throw std::runtime_error("cudaStreamCreate failed");    //先用异常，我们的推理框架粗心是不用异常体系的，
+            throw std::runtime_error("cudaStreamCreate failed");    //先用异常，我们的推理框架初心是不用异常体系的，
         }
         _stream = stream;
     }
@@ -42,7 +44,7 @@ public:
 
     // 身份（用户 + 调试）
     DeviceType  device_type() const {
-        return DeviceType::CPU;
+        return DeviceType::CUDA;
     }
     std::string device_name() const {
         return "CUDA:"+std::to_string(_device_id);
@@ -77,20 +79,25 @@ public:
                                                    
                                                         
 
-    // ========== 5. 执行（Scheduler 分派用）==========
-    virtual std::expected<void, std::error_code> compute(Tensor& t) = 0;
+    // 执行 scheduler传子图给每个后端执行
+    std::expected<void, std::error_code> compute(Graph & subGraph) ;
 
     // ========== 6. 同步（Scheduler 跨设备边界用）==========
-    virtual void synchronize() {}    // 默认空实现（CPU 用）
-
-    // ========== 7. ★ 预留：BufferPool ==========
-    virtual std::expected<BufferPool*, std::error_code>
-    create_buffer_pool(BufferKind /*kind*/, size_t /*size*/) {
-        return std::unexpected(std::make_error_code(std::errc::not_supported));
+    virtual void synchronize(){
+        cudaSetDevice(_device_id);
+        cudaStreamSynchronize(_stream);
     }
-    virtual BufferPool* get_buffer_pool(BufferKind /*kind*/) { return nullptr; }
+
+    // // ========== 7. ★ 预留：BufferPool ==========
+    // virtual std::expected<BufferPool*, std::error_code>
+    // create_buffer_pool(BufferKind /*kind*/, size_t /*size*/) {
+    //     return std::unexpected(std::make_error_code(std::errc::not_supported));
+    // }
+    // virtual BufferPool* get_buffer_pool(BufferKind /*kind*/) { return nullptr; }
 private:
     int _device_id;
     std::vector<void*> _allocations;   // 谁分配的tensor，要由谁释放
     cudaStream_t _stream;
+    
+    //TODO : 暂时没有做MIG 后期可以新增
 };

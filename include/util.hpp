@@ -195,7 +195,7 @@ enum class OperationType:uint32_t {
 
         GGML_OP_COUNT,
 };
- enum class OperationType_unary_op: uint32_t {
+enum class OperationType_unary_op: uint32_t {
         GGML_UNARY_OP_ABS,
         GGML_UNARY_OP_SGN,
         GGML_UNARY_OP_NEG,

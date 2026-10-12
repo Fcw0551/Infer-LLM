@@ -1,23 +1,67 @@
 #pragma once 
 #include "../../include/backend.hpp"
 #include <iostream>
+#include <thread>
+#include <mutex>
+#include<condition_variable>
+
+// 线程池
+class ThreadPool
+{
+public:
+    ThreadPool() = default;
+    ~ThreadPool() { shutdown(); }
+
+    ThreadPool(const ThreadPool &) = delete;
+    ThreadPool &operator=(const ThreadPool &) = delete;
+
+    void init(int n_threads);
+    void shutdown();
+
+    int size() const { return _n_threads; }
+
+    // 把 [0, n) 的任务并行分给所有线程
+    void parallel_for(int64_t n, const std::function<void(int64_t)> &fn);
+
+private:
+    void worker_loop(int tid);
+
+    std::vector<std::thread> _threads;
+    int _n_threads = 0;
+
+    // 任务状态
+    std::function<void(int64_t)> _fn; // 当前任务
+    int64_t _n = 0;                   // 任务总数
+    std::atomic<int64_t> _next{0};    // 下一个要处理的下标
+
+    // 同步
+    std::mutex _mtx;
+    std::condition_variable _cv_start; // 唤醒 worker 开始干活
+    std::condition_variable _cv_done;  // 通知主线程干完了
+    int _n_done = 0;                   // 完成的 worker 数
+    int _epoch = 0;                    // 任务轮次（防止伪唤醒）
+    bool _stop = false;                // 停止标志
+};
+
 void register_cpu_backend();
 // cpu 读取total_ram
 size_t get_total_memory();
 
 
 //-----多态----
+
 class CPUBackend : public Backend
 {
 public:
     CPUBackend(int device_id)
     :_device_id(device_id)
     {
-        std::cout << "cpu 实例化中 device_id: " << device_id << std::endl;
+        std::cout << "cpu 实例化中 device_id: " << _device_id << std::endl;
+        cpu_init();
     }
 
-    ~Backend() {
-        std::cout<<"cpu 析构中 device_id: " <<device_id<<std::endl;
+    ~CPUBackend() {
+        std::cout<<"cpu 析构中 device_id: " <<_device_id<<std::endl;
         for (void* p : _allocations) {
             std::free(p);          
         }
@@ -35,12 +79,20 @@ public:
     bool supports_op(OperationType op, const Tensor& t) const {
         return true;
     }
+    
 
-    // ========== 3. 内存管理（Scheduler 分配用）==========
+    // 设置线程数量
+    void set_n_threads(size_t n){
+        _n_threads=n;
+        _pool.init(n);   //重建线程池，刚刚cpu_init建过
+    }
+
+
+    // 内存管理（Scheduler 分配用）
     std::expected<void*, std::error_code> alloc(size_t bytes) {
         void* ptr=std::malloc(bytes);
         if(!ptr){
-            std::expected(make_error_code(std::errc::no_buffer_space));
+            return std::unexpected(make_error_code(std::errc::no_buffer_space));
         }
         _allocations.push_back(ptr);    
         return ptr;
@@ -67,19 +119,28 @@ public:
         return false;
     }   
 
-    // ========== 5. 执行（Scheduler 分派用）==========
-    virtual std::expected<void, std::error_code> compute(Tensor& t) = 0;
-
-    // ========== 6. 同步（Scheduler 跨设备边界用）==========
-    virtual void synchronize() {}    // 默认空实现（CPU 用）
+    // 执行 scheduler传子图给每个后端执行
+    virtual std::expected<void, std::error_code> compute(Graph & subGraph) ;
+  
+    std::expected<void, std::error_code> dispatch(Tensor* node);
+    
+    //  同步（Scheduler 跨设备边界用）
+    void synchronize() {}    // 默认空实现（CPU 用）
 
     // ========== 7. ★ 预留：BufferPool ==========
-    virtual std::expected<BufferPool*, std::error_code>
-    create_buffer_pool(BufferKind /*kind*/, size_t /*size*/) {
-        return std::unexpected(std::make_error_code(std::errc::not_supported));
-    }
-    virtual BufferPool* get_buffer_pool(BufferKind /*kind*/) { return nullptr; }
+    // virtual std::expected<BufferPool*, std::error_code>
+    // create_buffer_pool(BufferKind /*kind*/, size_t /*size*/) {
+    //     return std::unexpected(std::make_error_code(std::errc::not_supported));
+    // }
+    // virtual BufferPool* get_buffer_pool(BufferKind /*kind*/) { return nullptr; }
+
 private:
+    // cpu初始化
+    void cpu_init();
+private:
+
     int _device_id;
     std::vector<void*> _allocations;   // 谁分配的tensor，要由谁释放
+    int _n_threads=1;                  // 线程数
+    ThreadPool _threadPool;            // 线程池
 };

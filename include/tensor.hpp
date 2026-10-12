@@ -3,6 +3,8 @@
 #include "gguf_parser.hpp"
 #include <string>
 
+class Backend;  //前置声明
+
 //tensor算子的定义
 struct Tensor{
     Tensor(const TensorInfo* info)
@@ -35,20 +37,22 @@ struct Tensor{
     enum TensorRole tensorRole;                                                 //tensor是作为输入输出还是中间结点
     enum OperationType op = OperationType::GGML_OP_NONE;                        //算子类型
     enum DeviceType device;                                                     //后端
+    Backend* backend=nullptr;                                                   //实际Backend的指针，以方便cuda实现p2p
 
-//---------------------辅助函数-------------------------    
-//计算元素数量
-size_t element_count() const {
+    //---------------------辅助函数-------------------------
+    // 计算元素数量
+    size_t element_count() const{
         size_t n = 1;
-        for (size_t i = 0; i < dims.size(); ++i) {
-            if(dims[i]!=0)
-            n *= dims[i];
+        for (size_t i = 0; i < dims.size(); ++i)
+        {
+            if (dims[i] != 0)
+                n *= dims[i];
             break;
         }
         return n;
     }
-//计算tensor大小
-    size_t byte_size() const {
+    // 计算tensor大小
+    size_t byte_size() const{
         return element_count() * dataType_size(dataType);
     }
 

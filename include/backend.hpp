@@ -11,6 +11,8 @@
 #include "util.hpp"
 #include "tensor.hpp"
 #include<iostream>
+#include "graph.hpp"
+
 
 // 探测结果：描述一个可用设备
 struct DeviceInfo{
@@ -41,23 +43,22 @@ public:
     virtual std::expected<void, std::error_code> copy_tenosr_set(Tensor *tensor, const void *data, size_t offset, size_t size) = 0;
     // 从这个 tensor 所在的设备 buffer，读数据到 host 内存。
     virtual std::expected<void, std::error_code> copy_tenosr_get(Tensor *tensor, void *data, size_t offset, size_t size) = 0;
-    // 设备与设备之间可能要有高速，不需要经过cpu，如果这个方案不行，最后要退回cpu兜底
+    // 设备与设备之间可能要有高速，不需要经过cpu，如果这个方案不行，最后要退回cpu兜底，用的是dst的设备的能力
     //(optional) tensor copy: dst is in the buffer, src may be in any buffer, including buffers from a different backend (return false if not supported)
     virtual bool copy_tensor_high(const Tensor *src, Tensor *dst) const ;   
     
     
-    // 执行
-    virtual std::expected<void, std::error_code> compute(Tensor& t) = 0;
+    // 执行 scheduler传子图给每个后端执行
+    virtual std::expected<void, std::error_code> compute(Graph & subGraph) = 0; 
 
-    // ==========  同步（Scheduler 跨设备边界用）==========
-    virtual void synchronize() {}    // 默认空实现（CPU 用）
+    // // ==========  同步（Scheduler 跨设备边界用）==========
+    // virtual void synchronize() {}    // 默认空实现（CPU 用）
 
-    // ==========  预留：BufferPool ==========
-    virtual std::expected<BufferPool*, std::error_code>
-    create_buffer_pool(BufferKind /*kind*/, size_t /*size*/) {
-        return std::unexpected(std::make_error_code(std::errc::not_supported));
-    }
-    virtual BufferPool* get_buffer_pool(BufferKind /*kind*/) { return nullptr; }
+    // // ==========  预留：BufferPool ==========
+    // virtual std::expected<BufferPool*, std::error_code> create_buffer_pool(BufferKind /*kind*/, size_t /*size*/) {
+    //     return std::unexpected(std::make_error_code(std::errc::not_supported));
+    // }
+    // virtual BufferPool* get_buffer_pool(BufferKind /*kind*/) { return nullptr; }
 };
 
 class BackendRegistry {

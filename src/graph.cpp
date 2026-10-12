@@ -17,7 +17,7 @@ Tensor *Graph::add_node(std::unique_ptr<Tensor> t){
 }
 
 
-// 执行
+// 执行 建图
 std::expected<void, std::error_code> Graph::compute(){
     if (_outputs.empty()){
         return std::unexpected(std::make_error_code(std::errc::invalid_argument));
