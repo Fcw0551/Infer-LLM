@@ -69,18 +69,20 @@ Tensor *OpFactory::div(Graph &g, Tensor *a, Tensor *b, std::string_view name){
 }
 
 // embedding查询
-Tensor *OpFactory::embedding(Graph &g, Tensor *input_token, Tensor *token_embd){
+Tensor *OpFactory::embedding(Graph &g,Tensor *token_embd,Tensor *input_token){
 
-    // input_token : [n_tokens]
     // token_embd  : [n_embd , n_vocab]
+    // input_token : [n_tokens]
     // embedding   : [n_embd , n_tokens]
     uint64_t n_embd = token_embd->dims[0];
     uint64_t n_tokens = input_token->dims[0];
 
+    // src0 ： 表  
+    // src1 ： 索引
     Tensor *result = create_tensor(g, "embedding", token_embd->dataType, {n_embd, n_tokens});
     result->op = OperationType::GGML_OP_GET_ROWS;
-    result->src[0] = input_token;
-    result->src[1] = token_embd;
+    result->src[0] = token_embd;
+    result->src[1] = input_token;
     return result;
 }
 

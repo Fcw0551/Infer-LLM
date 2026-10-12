@@ -227,3 +227,13 @@ std::expected<void, std::error_code> CPUBackend::dispatch(Tensor* node) {
         return std::unexpected(std::make_error_code(std::errc::not_supported));
     }
 }
+
+
+//-------cpu算子实现--------------
+std::expected<void, std::error_code> CPUBackend::compute_get_rows(Tensor* node){
+    // 这个算子的本质是一个gather，一个表+一个索引
+    Tensor src0= node->src[0];
+    Tensor src1= node->src[1];
+
+
+}

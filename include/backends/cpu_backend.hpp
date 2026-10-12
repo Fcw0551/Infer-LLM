@@ -137,6 +137,9 @@ public:
 private:
     // cpu初始化
     void cpu_init();
+
+    // ---------算子实现----------
+    std::expected<void, std::error_code> compute_get_rows(Tensor* node);
 private:
 
     int _device_id;
