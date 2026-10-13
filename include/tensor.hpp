@@ -27,10 +27,10 @@ struct Tensor{
     }
     std::string name;                                                           //名字
     int layer;                                                                  //第几层
-    uint64_t offset;                                                            //数据在内存当中的偏移量
+    int64_t offset;                                                            //数据在内存当中的偏移量
     void* data=nullptr;                                                         //实际指向的数据
-    std::array<uint64_t,TENSOR_MAX_DIMS> dims{0,0,0,0};                         //维度
-    std::array<uint64_t,TENSOR_MAX_DIMS> strides{0,0,0,0};                      //步长
+    std::array<int64_t,TENSOR_MAX_DIMS> dims{0,0,0,0};                         //维度
+    std::array<int64_t,TENSOR_MAX_DIMS> strides{0,0,0,0};                      //步长
     std::array<Tensor*,TENSOR_MAX_SRC> src{nullptr,nullptr,nullptr,nullptr};    //某个tensor由哪个tensor计算来
     int32_t op_params[OP_PARAMS_MAX * sizeof(int32_t)];                         //算子需要的额外的参数 4*4=16字节
     enum DataType dataType;                                                     //数据类型
