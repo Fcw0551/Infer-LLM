@@ -242,3 +242,68 @@ const char* ggml_type_name(DataType t);
 size_t dataType_size(DataType dataType);
 
 const char* device_type_name(DeviceType t);
+
+
+// ============ 张量维度/步长局部变量宏 ============
+// 类比 ggml 的 GGML_TENSOR_*_OP_LOCALS：把张量的 dims[]/strides[] 抄进一组局部
+// const 变量，省掉每个 CPU 算子里手写 dims10/strides11 那一大坨声明。
+//
+// 命名规则：prefix 后面拼下标 0..3
+//   d0  -> d00 d01 d02 d03     src0 的 dims[0..3]
+//   s0  -> s00 s01 s02 s03     src0 的 strides[0..3]
+//   d1 / s1                    src1
+//   d2 / s2                    src2
+//   d  / s   -> d0..d3 / s0..s3    dst（注意没有前导数字）
+//
+// 用法：先在本作用域里准备好同名指针，再展开。例如
+//   Tensor* src0 = dst->src[0];
+//   Tensor* src1 = dst->src[1];
+//   INFERLLM_TENSOR_BINARY_LOCALS      // 一行拿全 src0/src1/dst 的 dims+strides
+// 之后就能直接用 d00 / s10 / d1 ... 等变量。
+#define INFERLLM_TENSOR_LOCALS_1(type, prefix, pointer, array) \
+    const type prefix##0 = (pointer) ? (pointer)->array[0] : 0; \
+    (void) prefix##0;
+
+#define INFERLLM_TENSOR_LOCALS_2(type, prefix, pointer, array) \
+    INFERLLM_TENSOR_LOCALS_1(type, prefix, pointer, array) \
+    const type prefix##1 = (pointer) ? (pointer)->array[1] : 0; \
+    (void) prefix##1;
+
+#define INFERLLM_TENSOR_LOCALS_3(type, prefix, pointer, array) \
+    INFERLLM_TENSOR_LOCALS_2(type, prefix, pointer, array) \
+    const type prefix##2 = (pointer) ? (pointer)->array[2] : 0; \
+    (void) prefix##2;
+
+#define INFERLLM_TENSOR_LOCALS(type, prefix, pointer, array) \
+    INFERLLM_TENSOR_LOCALS_3(type, prefix, pointer, array) \
+    const type prefix##3 = (pointer) ? (pointer)->array[3] : 0; \
+    (void) prefix##3;
+
+// 一元算子：src0 + dst
+#define INFERLLM_TENSOR_UNARY_LOCALS \
+    INFERLLM_TENSOR_LOCALS(int64_t, dims0, src0, dims)    \
+    INFERLLM_TENSOR_LOCALS(int64_t, strides0, src0, strides) \
+    INFERLLM_TENSOR_LOCALS(int64_t, dims,  dst,  dims)    \
+    INFERLLM_TENSOR_LOCALS(int64_t, strides,  dst,  strides)
+
+// 二元算子：src0 + src1 + dst（get_rows / add / mul ...）
+#define INFERLLM_TENSOR_BINARY_LOCALS \
+    INFERLLM_TENSOR_LOCALS(int64_t, dims0, src0, dims)    \
+    INFERLLM_TENSOR_LOCALS(int64_t, strides0, src0, strides) \
+    INFERLLM_TENSOR_LOCALS(int64_t, dims1, src1, dims)    \
+    INFERLLM_TENSOR_LOCALS(int64_t, strides1, src1, strides) \
+    INFERLLM_TENSOR_LOCALS(int64_t, dims,  dst,  dims)    \
+    INFERLLM_TENSOR_LOCALS(int64_t, strides,  dst,  strides)
+
+// 三元算子：src0 + src1 + src2 + dst（rope ...）
+#define INFERLLM_TENSOR_TERNARY_LOCALS \
+    INFERLLM_TENSOR_BINARY_LOCALS \
+    INFERLLM_TENSOR_LOCALS(int64_t, dims2, src2, dims)    \
+    INFERLLM_TENSOR_LOCALS(int64_t, strides2, src2, strides)
+
+// 只要 src0/src1，不要 dst
+#define INFERLLM_TENSOR_BINARY_LOCALS01 \
+    INFERLLM_TENSOR_LOCALS(int64_t, dims0, src0, dims)    \
+    INFERLLM_TENSOR_LOCALS(int64_t, strides0, src0, strides) \
+    INFERLLM_TENSOR_LOCALS(int64_t, dims1, src1, dims)    \
+    INFERLLM_TENSOR_LOCALS(int64_t, strides1, src1, strides)
