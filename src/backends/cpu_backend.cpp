@@ -251,35 +251,38 @@ std::expected<void, std::error_code> CPUBackend::compute_get_rows(Tensor* dst){
     //  indices: [n_idx, B1, B2]            ← 3 维
     //  输出:    [nc, n_idx, B1, B2]        ← 4 维
 
-    //  维度 
-    const int64_t nc  = table->dims[0];        // 每行元素数
-    const int64_t dims10 = indices->dims[0];     // 索引个数
-    const int64_t dims11 = indices->dims[1];     // 批次 1
-    const int64_t dims12 = indices->dims[2];     // 批次 2
+    // //  维度 
+    // const int64_t nc  = table->dims[0];        // 每行元素数
+    // const int64_t dims10 = indices->dims[0];     // 索引个数
+    // const int64_t dims11 = indices->dims[1];     // 批次 1
+    // const int64_t dims12 = indices->dims[2];     // 批次 2
 
-    //  步长（字节）
-    const int64_t strides10 = indices->strides[0];
-    const int64_t strides11 = indices->strides[1];
-    const int64_t strides12 = indices->strides[2];
+    // //  步长（字节）
+    // const int64_t strides10 = indices->strides[0];
+    // const int64_t strides11 = indices->strides[1];
+    // const int64_t strides12 = indices->strides[2];
 
-    const int64_t dims11 = table->strides[1];    // table 行步长
-    const int64_t dims12 = table->strides[2];
-    const int64_t dims13 = table->strides[3];
+    // const int64_t dims11 = table->strides[1];    // table 行步长
+    // const int64_t dims12 = table->strides[2];
+    // const int64_t dims13 = table->strides[3];
 
-    const int64_t strides1  = dst.strides[1];     // 输出行步长
-    const int64_t strides2  = dst.strides[2];
-    const int64_t strides3  = dst.strides[3];
+    // const int64_t strides1  = dst.strides[1];     // 输出行步长
+    // const int64_t strides2  = dst.strides[2];
+    // const int64_t strides3  = dst.strides[3];
     
-    const int64_t nc=table->dims[0];       //每行多少元素
-    const int64_t n_idx=indices->dims[0]; //索引的个数
+    // const int64_t nc=table->dims[0];       //每行多少元素
+    // const int64_t n_idx=indices->dims[0]; //索引的个数
 
+    INFERLLM_TENSOR_BINARY_LOCALS              //宏展开
+    
     const char *table_base = static_cast<const char *>(table->data);
     const char *indices_base = static_cast<const char *>(indices->data);
-    char *dst_base = static_cast<char *>(dst.data);
+    char *dst_base = static_cast<char *>(dst->data);
 
     const int64_t nr=dims10*dims11*dims12;  //要遍历多少行
 
-    _threadPool.parallel_for(nr,[&](int64_t i)){
+    _threadPool.parallel_for(nr, [&](int64_t i)
+                            {
         // 每个线程拿到第 i 行
         // 先计算这个一维的第 i 行转化为坐标是（i10，i11，i12）
         const int64_t i12=i/(dims10*dims11);
@@ -289,12 +292,59 @@ std::expected<void, std::error_code> CPUBackend::compute_get_rows(Tensor* dst){
         int32_t id = *reinterpret_cast<const int32_t *>(indices_base + i10 * strides10 + i11 * strides11 + i12 * strides12);
 
         // 源地址：table 的 (id, i11, i12)
-        const char *src = table_base + id * strides01 + i11 * strides02 + i12 * strides03;
+        const char *src = table_base + id * strides01 + i11 * strides02 + i12 * strides03;  
 
         // 目标地址：输出的 (i10, i11, i12)
         char *dst = dst_base + i10 * strides1 + i11 * strides2 + i12 * strides3;
 
         // 拷贝整行
-        std::memcpy(dst, src, nc * sizeof(float));
-    }
+        std::memcpy(dst, src, nc * sizeof(float)); }
+    )
+}
+
+
+std::expected<void, std::error_code> CPUBackend::compute_rms_norm(Tensor* dst){
+    // x            : [n_embd , n_tokens]
+    // weight       : [n_embd,1,1,1]
+    // rms_norm_i   : [n_embd , n_tokens]
+
+    Tensor* src0 = dst->src[0];
+    Tensor* src1 = dst->src[1];
+
+    infer_are_same_shape(src0,dst);
+    
+    // 宏展开
+    INFERLLM_TENSOR_BINARY_LOCALS
+
+    float eps =0;
+    std::memcpy(&eps,&dst->op_params[0],sizeof(eps));    //把eps拷贝出来
+    
+    const char *x_base = static_cast<const char *>(src0->data);
+    const char *weight_base = static_cast<const char *>(src1->data);
+    char *dst_base = static_cast<char *>(dst->data);
+
+    //TODO：decode阶段只一个token的时候，cpu只用一个核心，这里主要是按照token数量来并行的
+    //      后期可以改为token里面也分段，prefill阶段要根据核心数量动态调整，decode阶段可以一个token里面再细分
+    //      还有关于SIMD向量化的优化可以后期考虑
+    
+    // 两次的for循环是必然的 rms比layer少一次for
+    _threadPool.parallel_for(dims01, [&](int64_t i)
+                            {
+                                 // 求平方和  [n_embd , i]
+                                const float* start=static_cast<const float *>(x_base+i*strides1);
+                                const float* weight=static_cast<const float *>(weight_base);
+                                float* dst=static_cast<float *>(dst_base+i*strides1);
+
+                                double sum=0;           // TODO 这里用int 还是double 有没有考量呢
+
+                                for(int index=0;index<dims00;index++){
+                                    //sum+=std::pow(start[index],2);
+                                    sum+=start[index] * start[index];
+                                }
+                                // 开根号  乘以γ weight
+                                float scale=1.0f/std::sqrt(sum/dims00+eps);
+                                for(int index=0;index<dims00;index++){
+                                    dst[index]=start[index]*scale*weight[index];
+                                } 
+                            })
 }

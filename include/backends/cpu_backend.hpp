@@ -4,7 +4,7 @@
 #include <thread>
 #include <mutex>
 #include<condition_variable>
-
+#include <cmath>
 // 线程池
 class ThreadPool
 {
@@ -138,8 +138,16 @@ private:
     // cpu初始化
     void cpu_init();
 
-    // ---------算子实现----------
-    std::expected<void, std::error_code> compute_get_rows(Tensor* node);
+    // ---------算子实现----------    
+    std::expected<void, std::error_code> compute_get_rows(Tensor* dst);
+    std::expected<void, std::error_code> compute_rms_norm(Tensor* dst);
+    // 辅助检查函数
+    void infer_are_same_shape(const Tensor* x,const Tensor* y){
+        assert(x->dims[0]==y->dims[0]);
+        assert(x->dims[1]==y->dims[1]);
+        assert(x->dims[2]==y->dims[2]);
+        assert(x->dims[3]==y->dims[3]);
+    }
 private:
 
     int _device_id;
