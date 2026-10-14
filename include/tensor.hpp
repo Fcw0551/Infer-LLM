@@ -32,7 +32,7 @@ struct Tensor{
     std::array<int64_t,TENSOR_MAX_DIMS> dims{0,0,0,0};                         //维度
     std::array<int64_t,TENSOR_MAX_DIMS> strides{0,0,0,0};                      //步长
     std::array<Tensor*,TENSOR_MAX_SRC> src{nullptr,nullptr,nullptr,nullptr};    //某个tensor由哪个tensor计算来
-    int32_t op_params[OP_PARAMS_MAX * sizeof(int32_t)];                         //算子需要的额外的参数 4*4=16字节
+    int32_t op_params[OP_PARAMS_MAX * sizeof(int32_t)]={0};                         //算子需要的额外的参数 4*4=16字节
     enum DataType dataType;                                                     //数据类型
     enum TensorRole tensorRole;                                                 //tensor是作为输入输出还是中间结点
     enum OperationType op = OperationType::GGML_OP_NONE;                        //算子类型
