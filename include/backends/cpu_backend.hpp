@@ -141,6 +141,9 @@ private:
     // ---------算子实现----------    
     std::expected<void, std::error_code> compute_get_rows(Tensor* dst);
     std::expected<void, std::error_code> compute_rms_norm(Tensor* dst);
+    std::expected<void, std::error_code> compute_mul_mat(Tensor* dst);
+    std::expected<void, std::error_code> compute_rope(Tensor* dst);
+
     // 辅助检查函数
     void infer_are_same_shape(const Tensor* x,const Tensor* y){
         assert(x->dims[0]==y->dims[0]);

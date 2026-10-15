@@ -299,7 +299,8 @@ std::expected<void, std::error_code> CPUBackend::compute_get_rows(Tensor* dst){
 
         // 拷贝整行
         std::memcpy(dst, src, nc * sizeof(float)); }
-    )
+    );
+    return {};
 }
 
 
@@ -326,7 +327,7 @@ std::expected<void, std::error_code> CPUBackend::compute_rms_norm(Tensor* dst){
     //TODO：decode阶段只一个token的时候，cpu只用一个核心，这里主要是按照token数量来并行的
     //      后期可以改为token里面也分段，prefill阶段要根据核心数量动态调整，decode阶段可以一个token里面再细分
     //      还有关于SIMD向量化的优化可以后期考虑
-    
+
     // 两次的for循环是必然的 rms比layer少一次for
     _threadPool.parallel_for(dims01, [&](int64_t i)
                             {
@@ -346,5 +347,122 @@ std::expected<void, std::error_code> CPUBackend::compute_rms_norm(Tensor* dst){
                                 for(int index=0;index<dims00;index++){
                                     dst[index]=start[index]*scale*weight[index];
                                 } 
-                            })
+                            });
+    return {};
+}
+
+
+
+std::expected<void, std::error_code> compute_mul_mat(Tensor* dst){
+    //w     : [n_embd, n_out]
+    //x     : [n_embd, n_tokens] 
+    //out   : [n_out, n_tokens]
+    // x*w（转置）
+    
+    Tensor* src0 = dst->src[0];
+    Tensor* src1 = dst->src[1];
+    
+    // 宏展开
+    INFERLLM_TENSOR_BINARY_LOCALS
+
+    assert(dims00 == dims10);
+    assert(dst->ne[0] == dims01);
+    assert(dst->ne[1] == dims11);
+    const float *x_base = static_cast<const float *>(src1->data);
+    const float *w_base = static_cast<const float *>(src0->data);
+    float *dst_base = static_cast<float *>(dst->data);
+
+    //TODO: 现在暂时按照输出的维度的每个位置来定一个任务
+    _threadPool.parallel_for(dims01*dims11,[&](int64_t i){
+        // 先按照输出的每个位置来定并行
+        // i表示第i个任务 
+        // out[a b]=x[a K]* w[K b]
+
+        const int64_t token = i / dims01;
+        const int64_t output  = i % dims01;
+        
+        //计算起始偏移量
+        const float* x=x_base+token*dims10;
+        const float* w=w_base+output*dims00;
+        float sum=0.0f;
+        for(int64_t k=0;k<dims00;k++){
+            sum+=x[k]*w[k];
+        }
+        dst_base[i]=sum;
+    });
+    return {};
+}
+
+std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
+    Tensor *src0 = dst->src[0];             // x  （q/k）
+    Tensor *src1 = dst->src1[1];            // inp_pos
+    Tensor *src2 = dst->src1[2];            // theta表（旋转角度表）
+    INFERLLM_TENSOR_TERNARY_LOCALS
+
+    infer_are_same_shape(src2,dst);
+
+    // src0 (Q/K)   :  [head_dim, n_heads, n_tokens]
+    // src1 (pos)   :  [n_tokens]
+    // src2 (angle) :  [head_dim / 2 , n_ctx]
+    // dst          :  [head_dim, n_heads, n_tokens]
+
+    // rope θ表： 1/base_theta^(2.0*i/head_dim)
+    // 位置pos的token，旋转角度 Φ[pos,j]=pos*θj    已经缓存下来了
+    // c=cos(Φ[posj]),   s=sin(Φ[posj])
+    // dst[2j]   =X[2j]*c - X[2j+1]*s
+    // dst[2j+1] =X[2j]*s + X[2j+1]*c
+    
+    const float *w_base = static_cast<const float *>(src0->data);
+    const float *pos_base = static_cast<const float *>(src1->data);
+    const float *angle_table_base = static_cast<const float *>(src2->data);
+    float *dst_base = static_cast<float *>(dst->data);
+
+    // 先计算sin 和 cos
+    const int64_t n_pairs=dims00/2;                     //有多少对
+    std::vector<float> sin_cache(dims02 * n_pairs);     //每个token有n_pairs对，所以总的开的空间相乘
+    std::vector<float> cos_cache(dims02 * n_pairs);
+    for (int64_t token = 0; token < dims02; ++token){
+
+        const int64_t position = pos_base[token];       //获取当前token的实际位置
+
+        const float* angle_table=angle_table_base[position*n_pairs];
+
+        for (int64_t j = 0; j < n_pairs; ++j){
+
+            const float angle = angle_table[j];
+
+            const int64_t offset = token * n_pairs + j;
+
+            sin_cache[offset] = std::sin(angle);
+            cos_cache[offset] = std::cos(angle);
+        }
+    }
+
+    _threadPool.parallel_for(dims01 * dims02 * dims03, [&](int64_t i){
+        // 一个任务按照一个头去划分
+
+        // 计算是第几个token
+        const int64_t token = i / dims01;
+        // 计算 从哪里开始取数  从哪里开始放
+        const int64_t offset = i * dims00;              //元素的个数
+        const int64_t trig_offset = token * n_pairs;
+        
+        const float *start = x_base + offset;
+        float *dst = dst_base + offset;
+        
+        const float *sin_head = sin_cache.data() + trig_offset;
+        const float *cos_head = cos_cache.data() + trig_offset;
+        // token的真实位置
+        const int32_t pos=pos_base[token];
+        for (int64_t j = 0; j < n_pair ; ++j){
+            // 已经缓存好的sin cos
+            const float x0 = start[2 * j];
+            const float x1 = start[2 * j + 1];
+            const float c = cos_head[j];
+            const float s = sin_head[j];
+            y_head[2 * j] = x0 * c - x1 * s;
+            y_head[2 * j + 1] = x0 * s + x1 * c;
+        }
+    });
+    return {};
 }
