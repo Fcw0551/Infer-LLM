@@ -154,7 +154,18 @@ Tensor *OpFactory::flash_attn(Graph &g, Tensor *q, Tensor *k, Tensor *v, const A
 //Tensor *OpFactory::get_rows(Graph &g, Tensor *table, Tensor *indices);
 
 // 形状
-//Tensor *OpFactory::reshape(Graph &g, Tensor *x, std::initializer_list<int64_t> shape);
+Tensor* OpFactory::reshape(Graph& g, Tensor* x,std::initializer_list<int64_t> shape, std::string_view name) {
+    // 校验元素总数一致
+    int64_t new_total = 1;
+    for (int64_t d : shape) new_total *= d;
+    assert(static_cast<uint64_t>(new_total) == x->element_count());
+
+    // 创建新张量
+    Tensor* result = create_tensor(g, name, x->dataType, shape);
+    result->op     = OperationType::GGML_OP_RESHAPE;
+    result->src[0] = x;
+    return result;
+}
 //Tensor *OpFactory::permute(Graph &g, Tensor *x, std::initializer_list<int> axes);
 //Tensor *OpFactory::cont(Graph &g, Tensor *x); // 强制连续
 //Tensor *OpFactory::view(Graph &g, Tensor *x, std::initializer_list<int64_t> shape);

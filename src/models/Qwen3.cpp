@@ -7,6 +7,8 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 	Graph g; // 后面返回出去tensor的生命依旧被引用，只有全部被析构的时候才没
 
 	const uint32_t n_embd_head = _hparams.n_embd_head; // 每个头的维度
+	const uint32_t n_head = _hparams.n_head;		   // 头数
+	const uint32_t n_head_kv = _hparams.n_head_kv;		//GQA
 
 	// 输入
 	Tensor *input_token = g_ctx.get_input_tokens();
@@ -33,10 +35,10 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 	int64_t n_tokens = inp_pos->dims[0];
 	
 	AttnParams ap;
-	ap.n_head = _hparams.n_head;						      // 16
-	ap.n_head_kv = _hparams.n_head_kv;					      // 8
-	ap.head_dim = _hparams.n_embd_head;					   	  // 128
-	ap.scale = 1.0f / std::sqrt(float(_hparams.n_embd_head)); // 1/sqrt(128)
+	ap.n_head = n_head;						          // 16
+	ap.n_head_kv = n_head_kv;					      // 8
+	ap.head_dim = n_embd_head;					   	  // 128
+	ap.scale = 1.0f / std::sqrt(float(n_embd_head));  // 1/sqrt(128)
 	ap.causal = true;									      // Prefill 阶段开启
 	ap.n_ctx = static_cast<uint32_t>(n_tokens);   		      // 填 token 数(TODO，先简单处理，因为还没有实现kvcache。要区分要算多少token)
 	ap.sliding_window = 0;								      // Qwen3 这里不需要，就填 0
@@ -59,11 +61,13 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 		Tensor *q_norm = OpFactory::rms_norm(g, q, _weights.layers[i].attn_q_norm, _hparams.rms_norm_eps, "attn_q_norm_" + std::to_string(i));
 		Tensor *k_norm = OpFactory::rms_norm(g, k, _weights.layers[i].attn_k_norm, _hparams.rms_norm_eps, "attn_k_norm_" + std::to_string(i));
 
-		//TODO : reshape
+		// q_norm k_norm->reshape
+		Tensor *q_reshape = OpFactory::reshape(g, q_norm, {n_embd_head, n_head, n_tokens, 1}, "q_reshape_" + std::to_string(i));
+		Tensor *k_reshape = OpFactory::reshape(g, k_norm, {n_embd_head, _head_kv, n_tokens, 1}, "k_reshape_" + std::to_string(i));
 
 		// q_norm k_norm  -->  rope  (TODO:这里可能性能会差，每次都要sin和cos计算，后续可以用空间换时间)
-		Tensor *q_rope = OpFactory::rope(g, q_norm, inp_pos, rope_theta_table, "rope_q_" + std::to_string(i));
-		Tensor *k_rope = OpFactory::rope(g, k_norm, inp_pos, rope_theta_table, "rope_k_" + std::to_string(i));
+		Tensor *q_rope = OpFactory::rope(g, q_reshape, inp_pos, rope_theta_table, "rope_q_" + std::to_string(i));
+		Tensor *k_rope = OpFactory::rope(g, k_reshape, inp_pos, rope_theta_table, "rope_k_" + std::to_string(i));
 
 		// TODO：kvcache暂时还为做
 

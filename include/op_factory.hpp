@@ -59,7 +59,7 @@ public:
     static Tensor* get_rows(Graph& g, Tensor* table, Tensor* indices);
 
     // 形状
-    static Tensor* reshape(Graph& g, Tensor* x, std::initializer_list<int64_t> shape);
+    static Tensor* reshape(Graph& g, Tensor* x, std::initializer_list<int64_t> shape,std::string_view name="reshape");
     static Tensor* permute(Graph& g, Tensor* x, std::initializer_list<int> axes);
     static Tensor* cont(Graph& g, Tensor* x);    // 强制连续
     static Tensor* view(Graph& g, Tensor* x, std::initializer_list<int64_t> shape);

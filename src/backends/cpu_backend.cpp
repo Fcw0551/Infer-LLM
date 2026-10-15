@@ -418,14 +418,14 @@ std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
     float *dst_base = static_cast<float *>(dst->data);
 
     // 先计算sin 和 cos
-    const int64_t n_pairs=dims00/2;                     //有多少对
-    std::vector<float> sin_cache(dims02 * n_pairs);     //每个token有n_pairs对，所以总的开的空间相乘
+    const int64_t n_pairs=dims00/2;                     //有多少对  比如64对，每个token都共用64对angle
+    std::vector<float> sin_cache(dims02 * n_pairs);     //每个token有n_pairs对，所以总的开的空间相乘 多头共用
     std::vector<float> cos_cache(dims02 * n_pairs);
     for (int64_t token = 0; token < dims02; ++token){
 
         const int64_t position = pos_base[token];       //获取当前token的实际位置
 
-        const float* angle_table=angle_table_base[position*n_pairs];
+        const float* angle_table=angle_table_base[position*dim02];    //从angel表的哪里开始
 
         for (int64_t j = 0; j < n_pairs; ++j){
 
@@ -452,8 +452,7 @@ std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
         
         const float *sin_head = sin_cache.data() + trig_offset;
         const float *cos_head = cos_cache.data() + trig_offset;
-        // token的真实位置
-        const int32_t pos=pos_base[token];
+
         for (int64_t j = 0; j < n_pair ; ++j){
             // 已经缓存好的sin cos
             const float x0 = start[2 * j];
@@ -466,3 +465,4 @@ std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
     });
     return {};
 }
+
