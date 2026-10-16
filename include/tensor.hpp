@@ -18,12 +18,18 @@ struct Tensor{
     ,dataType(type)
     {
         size_t i=0;
+        int64_t size=dataType_size(type);
         for(auto&e:shape){
             if(i>=TENSOR_MAX_DIMS){
                 break;
             }
             dims[i++]=e;
         }
+        strides[0]=size;
+        strides[1]=size*dims[0];
+        strides[2]=size*dims[1]*dims[0];
+        strides[3]=size*dims[2]*dims[1]*dims[0];
+
     }
     std::string name;                                                           //名字
     int layer;                                                                  //第几层
