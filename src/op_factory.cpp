@@ -11,6 +11,7 @@ Tensor *OpFactory::create_tensor(Graph &g, std::string_view name, DataType type,
 }
 
 // 基础算子
+//TODO：暂时没有支持广播的机制
 Tensor *OpFactory::add(Graph &g, Tensor *a, Tensor *b, std::string_view name){
     // 维度肯定要ab一致
     assert(a->dims[0] == b->dims[0]);
