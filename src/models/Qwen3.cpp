@@ -61,9 +61,10 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 		Tensor *q_norm = OpFactory::rms_norm(g, q, _weights.layers[i].attn_q_norm, _hparams.rms_norm_eps, "attn_q_norm_" + std::to_string(i));
 		Tensor *k_norm = OpFactory::rms_norm(g, k, _weights.layers[i].attn_k_norm, _hparams.rms_norm_eps, "attn_k_norm_" + std::to_string(i));
 
-		// q_norm k_norm->reshape
+		// q_norm k_norm v->reshape
 		Tensor *q_reshape = OpFactory::reshape(g, q_norm, {n_embd_head, n_head, n_tokens, 1}, "q_reshape_" + std::to_string(i));
 		Tensor *k_reshape = OpFactory::reshape(g, k_norm, {n_embd_head, _head_kv, n_tokens, 1}, "k_reshape_" + std::to_string(i));
+		Tensor *v_reshape = OpFactory::reshape(g, v, {n_embd_head, _head_kv, n_tokens, 1}, "v_reshape_" + std::to_string(i));
 
 		// q_norm k_norm  -->  rope  (TODO:这里可能性能会差，每次都要sin和cos计算，后续可以用空间换时间)
 		Tensor *q_rope = OpFactory::rope(g, q_reshape, inp_pos, rope_theta_table, "rope_q_" + std::to_string(i));
