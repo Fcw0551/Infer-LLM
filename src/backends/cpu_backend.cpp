@@ -395,8 +395,8 @@ std::expected<void, std::error_code> compute_mul_mat(Tensor* dst){
 
 std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
     Tensor *src0 = dst->src[0];             // x  （q/k）
-    Tensor *src1 = dst->src1[1];            // inp_pos
-    Tensor *src2 = dst->src1[2];            // theta表（旋转角度表）
+    Tensor *src1 = dst->src[1];            // inp_pos
+    Tensor *src2 = dst->src[2];            // theta表（旋转角度表）
     INFERLLM_TENSOR_TERNARY_LOCALS
 
     infer_are_same_shape(src2,dst);
@@ -466,3 +466,106 @@ std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
     return {};
 }
 
+std::expected<void, std::error_code> CPUBackend::compute_flash_attn(Tensor* dst){
+    // q[head_dim, n_heads,n_tokens_q]
+    // k[head_dim, n_heads_kv,n_tokens_kv]
+    // v[head_dim, n_heads_kv,n_tokens_kv]
+    // O[head_dim, n_heads,n_tokens_q]
+
+    
+    //llama.cpp为了适配mul_mat接口采用permute 
+    //这里TODO：暂时不引入permute  flashattention  kvcache(由计算图或缓存模块负责)
+
+    Tensor *src0 = dst->src[0];             // q
+    Tensor *src1 = dst->src[1];            // k
+    Tensor *src2 = dst->src[2];            // v
+    INFERLLM_TENSOR_TERNARY_LOCALS
+
+    // 是不是GQA
+    int64_t group_size=dims01/dims11;   //  Hq / Hkv (每多少个Q共用一个kv)
+
+    const float *q_base = static_cast<const float *>(src0->data);
+    const float *k_base = static_cast<const float *>(src1->data);
+    const float *v_base = static_cast<const float *>(src2->data);
+    float *dst_base = static_cast<float *>(dst->data);
+
+    //softmax(qk/根号d)*v
+    _threadPool.parallel_for(dims01*dims02,[&](int64_t i){
+        // 这里我暂时实现的是S的一行作为一个任务 那么就是按照q的某个token的某个head作为一个任务
+
+        // 先计算是第几个token的第几个头
+        int64_t q_token = i / dims01;       //是第几个token
+        int64_t q_head = i % dims01;        //是第几个head
+        
+        // 计算src的位置，计算dst的位置，相乘再相加
+        const int64_t kv_head = q_head / group_size;                        // kv是用的哪个头，编号
+        const int64_t q_offset = i * dims00;                                // q:当前头是跳过了多少个
+        const float *q_start = q_base + q_offset;                           // q找到起始位置
+        
+        
+        float *dst_start = dst_base + q_offset;                             // dst找到位置
+
+        //对应位置相乘相加，然后放到指定位置即可
+        
+        // QK^T / sqrt(D)
+        // 当前 Query 对所有 Key 的 Attention Score
+        std::vector<float> scores(dims12);          //dims12=Nk
+        float scale=std::sqrt(dims00);              // sqrt(D)
+        for (int64_t key_token = 0; key_token < dims02; ++key_token){
+            // mask : 只允许访问当前位置之前的token
+            if (key_token > q_token){
+                //当前 Query 正在和第几个 Key token 计算注意力分数
+                scores[k] = -std::numeric_limits<float>::infinity();
+                continue;
+            }
+            const int64_t kv_offset = (key_token * dims11 + kv_head) * dims00;      //计算偏移，因为我们算的是s的一行*整个kv矩阵，所以这里的kv_offset是每次循环会跳跃的，比如token0的head1，token1的head1 token2的head1
+
+            const float *k_start = k_base + kv_offset;
+
+            float dot = 0.0f;
+
+            for (int64_t d = 0; d < dims00; ++d)
+            {
+                dot += q_start[d] * k_start[d];
+            }
+
+            scores[key_token] = dot * scale;
+        }
+        // softmax
+        const float max_score = *std::max_element(scores.begin(), scores.end());        //找到最大值
+        float sum=0.0f;
+        for (float &val : scores){
+            val = std::exp(val - max_score);
+            sum += val;
+        }
+        for (float &val : scores){
+            val /= sum;
+        }
+        // 和v进行相乘
+        // std::vector<float> result(dims20);
+        // for (int64_t d = 0; d < dims02; ++d){
+        //     for (int64_t k = 0; k < dims20; k++){
+        //         result[d] = v_start[k] * scores[d];
+        //     }
+        // }
+        
+        // 当前任务的输出是一个 D 维向量
+        std::fill(dst_start, dst_start + dims00, 0.0f);
+
+        // 遍历 V 的每一行，即不同 Key token 的 V 向量
+        for (int64_t key_token = 0; key_token < dims12; ++key_token){
+
+            const int64_t kv_offset = (key_token * dims21 + kv_head) * dims20;
+
+            const float *v_start = v_base + kv_offset;
+
+            const float weight = scores[key_token];
+
+            // 当前 V 行向量乘以权重，累加到输出
+            for (int64_t d = 0; d < dims20; ++d){
+                dst_start[d] += weight * v_start[d];
+            }
+        }
+    });
+    return {};
+}
