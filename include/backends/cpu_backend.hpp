@@ -144,6 +144,11 @@ private:
     std::expected<void, std::error_code> compute_mul_mat(Tensor* dst);
     std::expected<void, std::error_code> compute_rope(Tensor* dst);
     std::expected<void, std::error_code> compute_flash_attn(Tensor* dst);
+    std::expected<void, std::error_code> compute_add(Tensor* dst);
+    std::expected<void, std::error_code> compute_silu(Tensor* dst);
+    std::expected<void, std::error_code> compute_mul(Tensor* dst);
+
+
     // 辅助检查函数
     void infer_are_same_shape(const Tensor* x,const Tensor* y){
         assert(x->dims[0]==y->dims[0]);

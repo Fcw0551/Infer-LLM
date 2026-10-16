@@ -569,3 +569,72 @@ std::expected<void, std::error_code> CPUBackend::compute_flash_attn(Tensor* dst)
     });
     return {};
 }
+
+
+
+std::expected<void, std::error_code> CPUBackend::compute_add(Tensor* dst){
+    Tensor* src0=dst->src[0];
+    Tensor* src1=dst->src[1];
+    INFERLLM_TENSOR_BINARY_LOCALS
+    
+    //a[dims,token]
+    const float* a_base=static_cast<const float*>(src0->data);
+    const float* b_base=static_cast<const float*>(src1->data);
+    float* dst_base=static_cast<float*>(dst->data);
+    
+    _threadPool.parallel_for(dims01,[&](int64_t i){
+        //按照一行一个任务
+        const float* a_start=a_base+i*dims00;
+        const float* b_start=b_base+i*dims00;
+        float* dst_start=dst_base+i*dims00;
+        
+        for(int64_t k=0;k<dims00;k++){
+            dst_start[k]=a_start[k]+b_start[k];
+        }
+    });
+    return {};
+}
+
+
+std::expected<void, std::error_code> CPUBackend::compute_silu(Tensor* dst){
+    Tensor* src0=dst->src[0];
+    INFERLLM_TENSOR_UNARY_LOCALS
+    const float* src_base=static_cast<const float*>(src0->data);
+    float* dst_base=static_cast<float*>(dst->data);
+
+    _threadPool.parallel_for(dims01, [&](int64_t i){
+        //一行一个任务      TODO:decode阶段只有一个token
+        const float *src = src_base + i * dims00;
+        float *dst = dst_base + i * dims00;
+        for(int64_t k=0;k<dims00;k++){
+            dst[k]= src[k] / (1.0f + std::exp(-src[k]));
+        } 
+    });
+    return {};
+}
+
+
+
+std::expected<void, std::error_code> CPUBackend::compute_mul(Tensor* dst){
+    Tensor *src0 = dst->src[0];
+    Tensor *src1 = dst->src[1];
+
+    INFERLLM_TENSOR_BINARY_LOCALS
+
+    const float *a_base = static_cast<const float *>(src0->data);
+    const float *b_base = static_cast<const float *>(src1->data);
+    float *dst_base = static_cast<float *>(dst->data);
+
+    _threadPool.parallel_for(dims01, [&](int64_t i){
+
+        const float* a_start = a_base + i * dims00;
+        const float* b_start = b_base + i * dims00;
+        float* dst_start = dst_base + i * dims00;
+
+        for (int64_t k = 0; k < dims00; ++k) {
+            dst_start[k] = a_start[k] * b_start[k];
+        } 
+    });
+
+    return {};
+}
