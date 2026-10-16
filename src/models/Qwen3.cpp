@@ -75,6 +75,9 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 		// SDPA / FlashAttention
 		cur = OpFactory::flash_attn(g, q_rope, k_rope, v, ap, "flash_attn_" + std::to_string(i));
 
+		//reshape，因为flash_attn自动处理了permute了，所以整个qwen3无需permute算子，只要reshape即可
+		cur = OpFactory::reshape(g, cur, {n_embd_head * n_head, n_tokens, 1}, "attn_reshape_" + std::to_string(i));
+
 		// Wo
 		cur = OpFactory::mul_mat(g, _weights.layers[i].wo, cur, "o_proj" + std::to_string(i));
 
