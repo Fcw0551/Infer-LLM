@@ -41,7 +41,7 @@
         if (entry_it == _entries.end()){
             return std::unexpected(std::make_error_code(std::errc::no_such_device));
         }
-        return entry_it->second.create(device_id);
+        return entry_it->second.create(device_id,dev_it);
     }
     
     // 自动选择（优先 CUDA > Metal > CPU，可被环境变量覆盖）

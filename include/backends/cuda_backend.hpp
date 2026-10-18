@@ -11,8 +11,8 @@ void register_cuda_backend();
 // TODO（优化的点还有很多，现在是实现一个基础版本）
 class CUDABackend : public Backend{
 public:
-   CUDABackend(int device_id) exp
-    :_device_id(device_id)
+   CUDABackend(int device_id,DeviceInfo info) 
+    :Backend(device_id,info)
     {
         std::cout << "cuda 实例化中 device_id: " << device_id << std::endl;
         // 切换到目标设备
@@ -95,7 +95,8 @@ public:
     // }
     // virtual BufferPool* get_buffer_pool(BufferKind /*kind*/) { return nullptr; }
 private:
-    int _device_id;
+    //int _device_id;
+    //DeviceInfo _info;
     std::vector<void*> _allocations;   // 谁分配的tensor，要由谁释放
     cudaStream_t _stream;
     

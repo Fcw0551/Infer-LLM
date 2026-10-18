@@ -53,8 +53,8 @@ size_t get_total_memory();
 class CPUBackend : public Backend
 {
 public:
-    CPUBackend(int device_id)
-    :_device_id(device_id)
+    CPUBackend(int device_id,DeviceInfo info)
+    :Backend(device_id,info)
     {
         std::cout << "cpu 实例化中 device_id: " << _device_id << std::endl;
         cpu_init();
@@ -158,7 +158,8 @@ private:
     }
 private:
 
-    int _device_id;
+    //int _device_id;
+    //DeviceInfo _info;
     std::vector<void*> _allocations;   // 谁分配的tensor，要由谁释放
     int _n_threads=1;                  // 线程数
     ThreadPool _threadPool;            // 线程池

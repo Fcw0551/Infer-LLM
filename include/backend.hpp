@@ -23,9 +23,17 @@ struct DeviceInfo{
 
 class Backend
 {
+protected:
+    int _device_id;
+    DeviceInfo _info;
 public:
+    Backend(int device_id,DeviceInfo info)
+    :_device_id(device_id)
+    ,_info(info)
+    {}
     virtual ~Backend() = default;
 
+    const DeviceInfo& get_info() const { return _info; }
     // 身份（用户 + 调试）
     virtual DeviceType  device_type() const = 0;
     virtual std::string device_name() const = 0;
