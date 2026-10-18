@@ -9,6 +9,10 @@
 #include "util.hpp"
 class Graph {
 public:
+    // 子图使用：只存引用
+    void add_node_ref(Tensor* t) {
+        _nodes.push_back(t);          //只存裸指针，生命周期是交给拥有tensor的图
+    }
     // 构建 API 
     Tensor* add_node(Tensor* t);
     Tensor* add_node(std::unique_ptr<Tensor> t);
