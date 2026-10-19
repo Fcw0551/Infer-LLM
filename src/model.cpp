@@ -283,7 +283,44 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
     return {};
 }
 
+std::expected<void, std::error_code> ModelBase::plan_weights_placement(const std::vecotr<Backend*>& devices,const struct PlacementConfig&cfg){
+    //     struct PlacementConfig {
+    //     uint32_t n_ctx = 0;                     // 本次推理上下文长度
+    //     size_t kv_elem_size = 4;                // v1 按 f32 估
+    //     size_t margin_bytes  = 1ull << 30;      // 每设备预留
+    //     size_t workspace_bytes = 256ull << 20;  //256MB
+    // };
 
+    // 检查
+    if (devices.empty()){
+        return std::expected(std::make_error_code(std::errc::invalid_argument));
+    }
+    if (_weights.layers.size()){
+        return std::expected(std::make_error_code(std::errc::invalid_argument));
+    }
+    if (HParams.n_layer == 0 || HParams.n_head_kv == 0){
+        return std::expected(std::make_error_code(std::errc::invalid_argument));
+    }
+    if (cfg.n_ctx == 0){
+        return std::expected(std::make_error_code(std::errc::invalid_argument));
+    }
+
+    //devices 的顺序就是优先级：{cuda:0, cuda:1, cpu}。多 GPU 时层会按这个顺序 first-fit，后放的层落在靠前的 GPU 上。
+
+    // 从后往前放 一层一层放 最后必须要有cpu兜底
+    // 先找有没有cpu
+    bool has_host=false;
+    for(auto &device:devices){
+        if(device->is_host()){
+            has_host=true;
+        }
+    }
+    if(!has_host){
+        return std::expected(std::make_error_code(std::errc::not_supported));
+    }
+    std::vector<size_t> layer_cost(n_layer+1);  //这个加1是因为第0层去放输入层了，后面的才是transform的0 1 2……层
+    
+}
 
 
 

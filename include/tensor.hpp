@@ -49,11 +49,11 @@ struct Tensor{
     // 计算元素数量
     size_t element_count() const{
         size_t n = 1;
-        for (size_t i = 0; i < dims.size(); ++i)
-        {
+        for (size_t i = 0; i < dims.size(); ++i){
             if (dims[i] != 0)
                 n *= dims[i];
-            break;
+            else
+                break;
         }
         return n;
     }

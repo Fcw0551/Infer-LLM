@@ -9,6 +9,9 @@
 #include "tensor.hpp"
 #include "graph.hpp"
 #include "util.hpp"
+
+class Backend;
+
 //model name……
 struct HParams {
     std::string arch="";           // "llama", "internlm2", "qwen2"
@@ -65,6 +68,12 @@ struct Weights {
 };
 
 
+struct PlacementConfig {
+    uint32_t n_ctx = 0;                     // 本次推理上下文长度
+    size_t kv_elem_size = 4;                // v1 按 f32 估
+    size_t margin_bytes  = 1ull << 30;      // 每设备预留
+    size_t workspace_bytes = 256ull << 20;  //256MB
+};
 
 
 class ModelBase{
@@ -73,6 +82,7 @@ protected:
     HParams _hparams;                                  //超参数  ：模型是什么
     Weights _weights;                                  //权重视图：模型有什么   
     std::vector<std::unique_ptr<Tensor>> _tensor_pool; //Tensor 所有权
+    std::vector<Backend*> _dev_layer;                  // size = n_layer，每层归属（后续加载/KV 用）
 public:
     ModelBase(GGUFContext&& gguf) : _gguf(std::move(gguf)) {}
     //加载
@@ -81,10 +91,11 @@ public:
     std::expected<void,std::error_code> load_hparams();
     //加载权重
     std::expected<void,std::error_code> load_weight();
+    // 如果用户没有指定层数，那么这里就优先安排GPU 函数应该再split_graph之前调用
+    std::expected<void, std::error_code> plan_weights_placement(const std::vecotr<Backend*>& devices,const struct PlacementConfig&cfg);
     //不同的模型构建计算图的方式不同
-    virtual std::expected<Graph, std::error_code> build_graph(GraphContext& g_ctx) const=0;
+    virtual std::expected<Graph, std::error_code> build_graph(GraphContext& g_ctx) const=0; 
 };
-
 
 
 
