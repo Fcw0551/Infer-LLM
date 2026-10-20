@@ -169,10 +169,13 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
     {
         auto embd_exp = create_tensor("token_embd.weight");
         if (!embd_exp) return std::unexpected(embd_exp.error());
+        (*embd_exp)->layer=HParams.n_layer;
+        (*embd_exp)->tensorRole=TensorRole::TENSOR_ROLE_WEIGHT;
         _weights.token_embd = *embd_exp;
-        std::cout<<"_weights.token_embd"<<_weights.token_embd<<std::endl;
         auto out_norm_exp = create_tensor("output_norm.weight");
         if (!out_norm_exp) return std::unexpected(out_norm_exp.error());
+        (*out_norm_exp)->layer=HParams.n_layer;
+        (*out_norm_exp)->tensorRole=TensorRole::TENSOR_ROLE_WEIGHT;
         _weights.output_norm = *out_norm_exp;
 
         auto out_exp = create_tensor("output.weight");
@@ -180,6 +183,8 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
             _weights.output = _weights.token_embd;  // Qwen3 等 weight tying 模型：output.weight == token_embd.weight
         }
         else{
+            (*out_exp)->layer = HParams.n_layer;
+            (*out_exp)->tensorRole = TensorRole::TENSOR_ROLE_WEIGHT;
             _weights.output = *out_exp;
         }
     }
@@ -283,19 +288,27 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
     return {};
 }
 
+
+// load_weight之后执行，把每层的weight安排的device放好，后续scheduler能够进行划分图and调度
 std::expected<void, std::error_code> ModelBase::plan_weights_placement(const std::vecotr<Backend*>& devices,const struct PlacementConfig&cfg){
-    //     struct PlacementConfig {
+    //  // 推理配置 ： 方便后续计算图的安排device
+    // struct PlacementConfig {
     //     uint32_t n_ctx = 0;                     // 本次推理上下文长度
     //     size_t kv_elem_size = 4;                // v1 按 f32 估
     //     size_t margin_bytes  = 1ull << 30;      // 每设备预留
     //     size_t workspace_bytes = 256ull << 20;  //256MB
+    // };
+    // //device的配置
+    // struct Cap{
+    //     Backend *dev; // 设备
+    //     size_t left;  // 余量
     // };
 
     // 检查
     if (devices.empty()){
         return std::expected(std::make_error_code(std::errc::invalid_argument));
     }
-    if (_weights.layers.size()){
+    if (_weights.layers.empty()){
         return std::expected(std::make_error_code(std::errc::invalid_argument));
     }
     if (HParams.n_layer == 0 || HParams.n_head_kv == 0){
@@ -308,18 +321,161 @@ std::expected<void, std::error_code> ModelBase::plan_weights_placement(const std
     //devices 的顺序就是优先级：{cuda:0, cuda:1, cpu}。多 GPU 时层会按这个顺序 first-fit，后放的层落在靠前的 GPU 上。
 
     // 从后往前放 一层一层放 最后必须要有cpu兜底
-    // 先找有没有cpu
+
+
+
+    //-------------- 初始化设备余量 ------------
     bool has_host=false;
+    Backend* cpu_backend = nullptr;
+    std::vector<Cap> caps;
+
     for(auto &device:devices){
+        // 找有没有cpu
         if(device->is_host()){
             has_host=true;
+            cpu_backend = device;
         }
+        // 计算每台设备能不能运行 ： 扣除 margin_bytes + workspace_bytes (运行时开销)
+        size_t total = device->get_info().memory_bytes;
+        if (total < cfg.margin_bytes + cfg.workspace_bytes) // 有隐患，可能用户传一张很小的卡+cpu，cpu能跑，但是传了gpu导致后续都跑不了
+            return std::expected(std::make_error_code(std::errc::not_enough_memory));
+        caps.push_back({ device, total - cfg.margin_bytes - cfg.workspace_bytes });
+
     }
     if(!has_host){
         return std::expected(std::make_error_code(std::errc::not_supported));
     }
-    std::vector<size_t> layer_cost(n_layer+1);  //这个加1是因为第0层去放输入层了，后面的才是transform的0 1 2……层
+
+    // intput固定放在cpu了，因为本质就是索引
+
+    // --------------估算每层放置的开销-----------
+    std::vector<size_t> cost_layer(HParams.n_layer);
+    // kv的隐藏层：HParams.n_head_kv * HParams.n_embd_head 
+    size_t kv_size_per_layer = 2ull * cfg.n_ctx * HParams.n_head_kv * HParams.n_embd_head * cfg.kv_elem_size;
+    // 权重大小 lambda表达式辅助查询
+    auto accumulate_layer=[&](const LayerWeights& lw)->size_t {
+        size_t sum=lw.attn_norm->size_bytes()+lw.wq->size_bytes()+lw.wk->size_bytes()+lw.wv->size_bytes()+
+        lw.wo->size_bytes()+lw.ffn_norm->size_bytes()+lw.ffn_gate->size_bytes()+lw.ffn_up->size_bytes()+lw.ffn_down->size_bytes();
+        if(lw.attn_q_norm){
+            sum+=lw.attn_q_norm->size();
+        }
+        if(lw.attn_k_norm){
+            sum+=lw.attn_k_norm->size();
+        }
+        return sum;
+    };
+    for(size_t i=0;i<cost_layer.size();++i){
+        cost_layer[i]=kv_size_per_layer+accumulate_layer[i];
+    }
+
+    // 输出层的开销 放在最后面了，可以单独的去放在cpu或者gpu（推荐优先gpu和最后一层输出一起）
+    const bool tied = (_weights.output == _weights.token_embd);
+    const size_t norm_bytes = _weights.output_norm->byte_size();
+    const size_t out_w_bytes = tied ? _weights.token_embd->byte_size() : _weights.output->byte_size();
+
+    // ----------- 贪心放置 -----------
+    auto try_place_gpu = [&](size_t cost) -> Backend *{
+        for (auto &c : caps)
+        {
+            if (c.dev->is_host())
+                continue; // CPU 不参与主动放置
+            if (c.left >= cost){
+                c.left -= cost;
+                return c.dev;
+            }
+        }
+        return nullptr;
+    };
+    // 默认全部都是cpu
+    std::vector<Backend*> dev_layer(HParams.n_layer,cpu_backend);
     
+    // output 单元 这里如果output放在cpu，可能效果很差
+    Backend *dev_output try_place_gpu(out_w_bytes); 
+    if (dev_output && tied){
+        // 真正决定上 GPU 了才补副本（元信息，同一 GGUF offset）
+        auto dup = std::make_unique<Tensor>(_gguf.find_tensor("token_embd.weight"));    // 根据tensorinfo去构建一个tensor对象
+        dup->name = "output.weight";
+        dup->layer = _hparams.n_layer;
+        dup->tensorRole = TensorRole::TENSOR_ROLE_WEIGHT;
+        _weights.output = dup.get();
+        _weights.map["output.weight"] = dup.get();
+        _tensor_pool.push_back(std::move(dup));
+    }
+   
+    // transformer 层，从后往前
+    bool gpu_run = true;
+    for (int il = HParams.n_layer - 1; il >= 0; --il){
+        if (!gpu_run)
+            break; // 关键：一旦失败就停：不要继续往前搜索可行解了，否则会导致断层，gpu cpu gpu ，目的是cpu cpu cpu …… gpu gpu gpu
+        if (Backend *d = try_place_gpu(layer_cost[il]))
+            dev_layer[il] = d;
+        else
+            gpu_run = false;
+    }
+   
+    // cpu兜底 现在计算一下cpu够不够 
+    size_t cpu_need=0;
+    if(dev_output==nullptr){
+        dev_output=cpu_backend;
+        // 落 CPU 时不复制：tied 的话权重已随 token_embd 计过，只加 norm
+        cpu_need += norm_bytes + (tied ? 0 : out_w_bytes);
+    }
+    for (int il = 0; il < n_layer; ++il)
+        if (dev_layer[il] == cpu)
+            cpu_need += layer_cost[il];
+    // 还要加上输入的
+    cpu_need += _weights.token_embd->byte_size();
+    size_t cpu_cap=cpu_backend->get_info().memory_bytes - cfg.margin_bytes - cfg.workspace_bytes;
+    if(cpu_cap<cpu_need){
+        return std::expected(std::make_error_code(std::errc::not_enough_memory));
+    }
+
+    // --------- 放置完成 -----------
+
+    _dev_layer = std::move(dev_layer);
+    _dev_output = dev_output;
+    // 辅助每个tensor标记backend
+    auto bind = [](Tensor *t, Backend *b)
+    {
+        if (!t)
+            return;
+        t->backend = b;
+        t->device = b->get_info().type;
+    };
+    auto get_layer_tensors = [](const LayerWeights &lw) -> std::vector<Tensor *>
+    {
+        std::vector<Tensor *> ts;
+        ts.reserve(11); // 预分配，避免扩容
+
+        // 把指针装进去，后面在 bind 的时候再统一判空
+        ts.push_back(lw.attn_norm);
+        ts.push_back(lw.wq);
+        ts.push_back(lw.wk);
+        ts.push_back(lw.wv);
+        ts.push_back(lw.wo);
+        ts.push_back(lw.ffn_norm);
+        ts.push_back(lw.ffn_gate);
+        ts.push_back(lw.ffn_up);
+        ts.push_back(lw.ffn_down);
+
+        if (lw.attn_q_norm)
+            ts.push_back(lw.attn_q_norm);
+        if (lw.attn_k_norm)
+            ts.push_back(lw.attn_k_norm);
+
+        return ts;
+    };
+    // 辅助遍历每层的weight
+    for (int il = 0; il < n_layer; ++il)
+        for (Tensor *t : get_layer_tensors(_weights.layers[il]))
+            bind(t, _dev_layer[il]);
+
+    bind(_weights.token_embd, cpu); // input 永远 CPU
+    bind(_weights.output_norm, _dev_output);
+    bind(_weights.output, _dev_output);
+
+    return {};
+
 }
 
 

@@ -67,22 +67,27 @@ struct Weights {
     }
 };
 
-
+// 推理配置 ： 方便后续计算图的安排device
 struct PlacementConfig {
     uint32_t n_ctx = 0;                     // 本次推理上下文长度
     size_t kv_elem_size = 4;                // v1 按 f32 估
     size_t margin_bytes  = 1ull << 30;      // 每设备预留
     size_t workspace_bytes = 256ull << 20;  //256MB
 };
-
+//device的配置
+struct Cap{
+    Backend *dev; // 设备
+    size_t left;  // 余量
+};
 
 class ModelBase{
 protected:
-    GGUFContext _gguf;                                 //GGUF文件
-    HParams _hparams;                                  //超参数  ：模型是什么
-    Weights _weights;                                  //权重视图：模型有什么   
-    std::vector<std::unique_ptr<Tensor>> _tensor_pool; //Tensor 所有权
+    GGUFContext _gguf;                                 // GGUF文件
+    HParams _hparams;                                  // 超参数  ：模型是什么
+    Weights _weights;                                  // 权重视图：模型有什么   
+    std::vector<std::unique_ptr<Tensor>> _tensor_pool; // Tensor 所有权
     std::vector<Backend*> _dev_layer;                  // size = n_layer，每层归属（后续加载/KV 用）
+    Backend* _dev_output=nullptr;                      // output的device
 public:
     ModelBase(GGUFContext&& gguf) : _gguf(std::move(gguf)) {}
     //加载
