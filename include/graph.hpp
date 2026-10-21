@@ -13,9 +13,16 @@ public:
     void add_node_ref(Tensor* t) {
         _nodes.push_back(t);          //只存裸指针，生命周期是交给拥有tensor的图
     }
-    // 构建 API 
+    // 构建 API
     Tensor* add_node(Tensor* t);
     Tensor* add_node(std::unique_ptr<Tensor> t);
+    // 只接管所有权，不登记成计算图节点（Scheduler 的边界拷贝张量用）：
+    // 生命周期跟着总图走，但不参与拓扑排序、不会被 backend 当节点执行
+    Tensor* adopt(std::unique_ptr<Tensor> t){
+        Tensor* raw = t.get();
+        _owned.push_back(std::move(t));
+        return raw;
+    }
     void mark_input(Tensor* t){
         _inputs.push_back(t);
     }
