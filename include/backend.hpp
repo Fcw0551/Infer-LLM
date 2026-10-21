@@ -50,7 +50,7 @@ public:
     // 从 host 的内存数据 写入这个 tensor 所在的设备的buffer
     virtual std::expected<void, std::error_code> copy_tenosr_set(Tensor *tensor, const void *data, size_t offset, size_t size) = 0;
     // 从这个 tensor 所在的设备 buffer，读数据到 host 内存。
-    virtual std::expected<void, std::error_code> copy_tenosr_get(Tensor *tensor, void *data, size_t offset, size_t size) = 0;
+    virtual std::expected<void, std::error_code> copy_tenosr_get(const Tensor *tensor, void *data, size_t offset, size_t size) = 0;
     // 设备与设备之间可能要有高速，不需要经过cpu，如果这个方案不行，最后要退回cpu兜底，用的是dst的设备的能力
     //(optional) tensor copy: dst is in the buffer, src may be in any buffer, including buffers from a different backend (return false if not supported)
     virtual bool copy_tensor_high(const Tensor *src, Tensor *dst) const ;   
