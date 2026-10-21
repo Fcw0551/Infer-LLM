@@ -40,11 +40,11 @@ struct Tensor{
     std::array<Tensor*,TENSOR_MAX_SRC> src{nullptr,nullptr,nullptr,nullptr};    //某个tensor由哪个tensor计算来
     int32_t op_params[OP_PARAMS_MAX * sizeof(int32_t)]={0};                     //算子需要的额外的参数 4*4=16字节
     enum DataType dataType;                                                     //数据类型
-    enum TensorRole tensorRole;                                                 //tensor是作为输入输出还是中间结点
+    enum TensorRole tensorRole=TensorRole::TENSOR_ROLE_NONE;                    //tensor是作为输入输出还是中间结点
     enum OperationType op = OperationType::GGML_OP_NONE;                        //算子类型
     enum DeviceType device;                                                     //后端
     Backend* backend=nullptr;                                                   //实际Backend的指针
-
+    bool pinned = false;                                                        //当前算子是否被pinned在某个backend上
     //---------------------辅助函数-------------------------
     // 计算元素数量
     size_t element_count() const{
