@@ -26,3 +26,26 @@ public:
 
     virtual void free(void *ptr) = 0;
 };
+
+
+// cpu
+class CPUPhysicalAllocator : public PhysicalAllocator{
+public:
+    std::expected<void *, std::error_code> raw_alloc(const size_t bytes) override{
+        if (bytes == 0){
+            return static_cast<void* >(nullptr);
+        }
+
+        void *ptr = std::malloc(bytes);
+
+        if (ptr == nullptr){
+            return std::unexpected(
+                std::make_error_code(std::errc::not_enough_memory));
+        }
+
+        return ptr;
+    }
+    void raw_free(void *ptr) override{
+        std::free(ptr);
+    }
+};
