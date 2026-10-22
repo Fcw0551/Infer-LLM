@@ -12,7 +12,7 @@
 #include "tensor.hpp"
 #include<iostream>
 #include "graph.hpp"
-
+#include "memoryPool.hpp"
 
 // 探测结果：描述一个可用设备
 struct DeviceInfo{
@@ -26,6 +26,9 @@ class Backend
 protected:
     int _device_id;
     DeviceInfo _info;
+    std::unique_ptr<MemoryPool> _weights_pool;      // 权重池
+    std::unique_ptr<MemoryPool> _activation_pool;   // 激活池
+    std::unique_ptr<MemoryPool> _kvcache_pool;      // kvcache池
 public:
     Backend(int device_id,DeviceInfo info)
     :_device_id(device_id)
