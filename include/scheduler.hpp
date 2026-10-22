@@ -6,6 +6,7 @@
 #include"graph.hpp"
 #include "util.hpp"
 #include "../include/backend.hpp"   
+#include "kvcacheManager.hpp"
 
 // 承担计算资源与计算任务的调度
     // 管理可用计算设备
@@ -43,11 +44,11 @@ struct Subgraph{
 class Scheduler{
 public:
     Scheduler(std::vector<Backend* >& backend)
-    , _backends(backend)
+    :_backends(backend)
     {}
     // 服务scheduler
     void add_backend(Backend& backend){
-        _backends.push_back(*backend);
+        _backends.push_back(&backend);
     }
     // TODO : 现在暂时没有绑定graph，因为目前每次都要decode
     // 执行
@@ -73,7 +74,7 @@ private:
     size_t Scheduler::estimate_activation_memory(Tensor *node);
 
 private:
-    //Graph* _graph;                                      // TODO 现在暂时没有绑定graph，因为目前每次都要decode
-    std::vector<Backend *> _backends;                     // 管理可用计算设备
-    std::vector<Subgraph> _subgraphs;                     // 子图
+    //Graph* _graph;                                                            // TODO 现在暂时没有绑定graph，因为目前每次都要decode
+    std::vector<Backend *> _backends;                                           // 管理可用计算设备
+    std::vector<Subgraph> _subgraphs;                                           // 子图
 };
