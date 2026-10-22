@@ -178,7 +178,7 @@ std::expected<void, std::error_code> Scheduler::split_graph(Graph &g){
         }
     }
 
-    //---- pass5: 按连续的 backend 切分子图 + 在边界插拷贝 ------
+    //---- pass5: 按连续的 backend 切分子图 + 在边界插拷贝 ------TODO 权重结点没有区分，可以做区分，然后只拷贝一次常驻
     // 1：拓扑序里相邻且 backend 相同的节点归为一个子图
     // 2：子图内某个节点的 src 不在本子图的 backend 上：在本子图 backend 上建一个拷贝张量，
     //    把 node->src[j] 改指向拷贝张量；同一子图内同一个 src 只建一份
