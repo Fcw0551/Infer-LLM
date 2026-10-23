@@ -21,6 +21,15 @@ struct DeviceInfo{
     size_t memory_bytes = 0;
 };
 
+// 分配种类：决定进哪个池、生命周期、回收策略
+enum class BufferKind : uint8_t{
+    WEIGHTS = 0, // 模型级常驻（mmap 导入 / 一次性上传显存）
+    ACTIVATION,  // 单次图执行，整块复用
+    KVCACHE,     // 请求级预留
+};
+
+
+
 class Backend
 {
 protected:
@@ -45,9 +54,13 @@ public:
     virtual bool supports_op(OperationType op, const Tensor& t) const = 0;
 
     // 内存管理
-    virtual std::expected<void*, std::error_code> alloc(size_t bytes) = 0;
-    virtual void free(void* ptr)   = 0;
-
+    // 随意来一块
+    virtual std::expected<void *, std::error_code> alloc(size_t bytes) = 0;
+    virtual void free(void *ptr) = 0;
+    // 选择各种池来一块
+    virtual std::expected<void *, std::error_code> alloc(BufferKind kind, size_t bytes) = 0;
+    virtual void free(BufferKind kind, void *ptr) = 0;
+    
     // 跨设备传输  copy结点
     virtual bool is_host() const = 0;
     // 从 host 的内存数据 写入这个 tensor 所在的设备的buffer
