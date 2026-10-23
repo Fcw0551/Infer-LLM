@@ -79,6 +79,13 @@ struct Cap{
     Backend *dev; // 设备
     size_t left;  // 余量
 };
+// 权重申请和释放的管理
+struct Arena
+{
+    Backend *backend;
+    size_t bytes;
+    void *base;
+};
 
 class ModelBase{
 protected:
@@ -88,8 +95,19 @@ protected:
     std::vector<std::unique_ptr<Tensor>> _tensor_pool; // Tensor 所有权
     std::vector<Backend*> _dev_layer;                  // size = n_layer，每层归属（后续加载/KV 用）
     Backend* _dev_output=nullptr;                      // output的device
+    std::vector<Arena> _weight_arenas;                 // 权重申请和释放的管理
 public:
     ModelBase(GGUFContext&& gguf) : _gguf(std::move(gguf)) {}
+    ~ModelBase(){
+        // 释放weight TODO backend后死
+        if(!_weight_arenas.empty()){
+            for(auto& it:_weight_arenas){
+                //virtual void free(BufferKind kind, void *ptr) = 0;
+                it.backend->free(BufferKind::WEIGHTS,it.base);
+            }
+        }
+        _weight_arenas.clear();
+    }
     //加载
     static std::expected<std::unique_ptr<ModelBase>, std::error_code> load_model(GGUFContext&& gguf);
     //加载超参数->整体架构
@@ -100,6 +118,9 @@ public:
     std::expected<void, std::error_code> plan_weights_placement(const std::vecotr<Backend*>& devices,const struct PlacementConfig&cfg);
     //不同的模型构建计算图的方式不同
     virtual std::expected<Graph, std::error_code> build_graph(GraphContext& g_ctx) const=0; 
+private:
+    std::vector<Tensor *> get_layer_tensors(const LayerWeights &lw);
+    std::expected<void,std::error_code> alloc_weight();
 };
 
 
