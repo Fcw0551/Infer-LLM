@@ -180,6 +180,9 @@ public:
         return it == _tensor_index.end() ? nullptr : it->second;
     }
     const GGUFMetadata& metadata() const { return _metadata; }
+    // 返回数据区起始，方便model当中加载tensor确定位置
+    size_t data_region_offset() const { return _data_region_offset; }
+    size_t data_base() const { return _file.view().data(); }
     //打印kv和tensor相关信息
     void print(size_t tensor_limit = 0) const;
 private:
