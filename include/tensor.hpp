@@ -33,7 +33,7 @@ struct Tensor{
     }
     std::string name;                                                           //名字
     int layer;                                                                  //第几层
-    int64_t offset;                                                             //数据在内存当中的偏移量
+    int64_t offset;                                                             //数据在内存当中的偏移量（相对于gguf的数据区）
     void* data=nullptr;                                                         //实际指向的数据
     std::array<int64_t,TENSOR_MAX_DIMS> dims{0,0,0,0};                          //维度
     std::array<int64_t,TENSOR_MAX_DIMS> strides{0,0,0,0};                       //步长
