@@ -67,15 +67,11 @@ private:
 
     // ------helper-------
     // 初始化内存容量
-    std::unordered_map<Backend *, size_t> Scheduler::init_memory_budgets(Graph &g);
-    // 为算子挑选合适的backend
-    std::expected<Backend *, std::error_code> Scheduler::pick_backend_for_node(Tensor *node, const std::unordered_map<Backend *, size_t> &budgets);
-    // 计算tensor的大小 TODO
-    size_t Scheduler::estimate_activation_memory(Tensor *node);
+    std::expected<std::unordered_map<Backend *, size_t>, std::error_code> init_memory_budgets(Graph &g);
 
 private:
     //Graph* _graph;                                                            // TODO 现在暂时没有绑定graph，因为目前每次都要decode
     std::vector<Backend *> _backends;                                           // 管理可用计算设备
     std::vector<Subgraph> _subgraphs;                                           // 子图
-    KVCacheManager* _kv                                                         // kv管理类
+    KVCacheManager* _kv = nullptr;                                              // kv管理类
 };
