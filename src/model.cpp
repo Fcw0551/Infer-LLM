@@ -289,7 +289,8 @@ std::expected<void,std::error_code> ModelBase::load_weight(){
 }
 
 
-// load_weight之后执行，把每层的weight安排的device放好，后续scheduler能够进行划分图and调度
+// load_weight之后执行，把每层的weight安排的device放好，后续scheduler能够进行划分图and调度 
+// tips：这里会再确定好权重的backend之后，开辟权重内存，之前mmap只是映射未占用实际的物理内存
 std::expected<void, std::error_code> ModelBase::plan_weights_placement(const std::vecotr<Backend*>& devices,const struct PlacementConfig&cfg){
     //  // 推理配置 ： 方便后续计算图的安排device
     // struct PlacementConfig {
@@ -442,29 +443,7 @@ std::expected<void, std::error_code> ModelBase::plan_weights_placement(const std
         t->backend = b;
         t->device = b->get_info().type;
     };
-    auto get_layer_tensors = [](const LayerWeights &lw) -> std::vector<Tensor *>
-    {
-        std::vector<Tensor *> ts;
-        ts.reserve(11); // 预分配，避免扩容
-
-        // 把指针装进去，后面在 bind 的时候再统一判空
-        ts.push_back(lw.attn_norm);
-        ts.push_back(lw.wq);
-        ts.push_back(lw.wk);
-        ts.push_back(lw.wv);
-        ts.push_back(lw.wo);
-        ts.push_back(lw.ffn_norm);
-        ts.push_back(lw.ffn_gate);
-        ts.push_back(lw.ffn_up);
-        ts.push_back(lw.ffn_down);
-
-        if (lw.attn_q_norm)
-            ts.push_back(lw.attn_q_norm);
-        if (lw.attn_k_norm)
-            ts.push_back(lw.attn_k_norm);
-
-        return ts;
-    };
+   
     // 辅助遍历每层的weight
     for (int il = 0; il < n_layer; ++il)
         for (Tensor *t : get_layer_tensors(_weights.layers[il]))
@@ -473,12 +452,130 @@ std::expected<void, std::error_code> ModelBase::plan_weights_placement(const std
     bind(_weights.token_embd, cpu); // input 永远 CPU
     bind(_weights.output_norm, _dev_output);
     bind(_weights.output, _dev_output);
-
+    
+    // 开辟实际占用的内存空间，加载weight
+    auto result=alloc_weight();
+    if(!result){
+        return std::unexpected(result.error());
+    }
+    
     return {};
 
 }
 
 
+// 私有：放置确定后调用，把权重绑定到 _dev_layer / _dev_output / _dev_input
+std::expected<void, std::error_code> ModelBase::alloc_weight(){
+    // 按设备分组
+    std::unordered_map<Backend *, std::vector<Tensor *>> groups;
+    auto add = [&](Tensor *t, Backend *dev){
+        if (!t || !dev) return;
+        groups[dev].push_back(t);
+    };
+
+    add(_weights.token_embd, _dev_input);
+    add(_weights.output_norm, _dev_output);
+    add(_weights.output,     _dev_output);
+    for (int il = 0; il < (int)_dev_layer.size(); ++il)
+        for (Tensor *t : get_layer_tensors(_weights.layers[il]))
+            add(t, _dev_layer[il]);
+
+    // 每个 tensor 在文件里的地址（GGUF 的 offset 相对数据区）
+    auto src_of = [&](const Tensor *t){
+        // mmap文件的起始位置 + 数据区偏移 + tensor的偏移 = tensor的起始
+        return _gguf.data_base() + _gguf.data_region_offset() + t->offset;
+    };
+
+    constexpr size_t ALIGN = 64;                       // 向上对齐数 TODO：应该由backend自动探测，往上报
+    auto align_up = [](size_t x, size_t a){ return (x + a - 1) / a * a; };
+
+    // host：直接绑定，不分配
+    // 非 host：算总大小，开一块
+    struct Arena { Backend *backend; size_t bytes; void *base; };
+    std::vector<Arena> arenas;
+
+    // 失败时统一回滚：只回收本次已经开出来的 arena
+    // host没有加入arena，释放非host即可
+    auto rollback = [&]() noexcept {
+        for (const auto &a : arenas)
+            for (Tensor *t : groups.at(a.backend))
+                t->data = nullptr;                          // 尚未切分时本来就是 nullptr，重复置空无害
+        for (const auto &a : arenas)
+            a.backend->free(BufferKind::WEIGHTS, a.base);
+        arenas.clear();
+    };
+
+    // 开辟逻辑
+    for (auto &[dev, tv] : groups) {
+        // 如果是host
+        if (dev->is_host()) {
+            // 遍历vector里面的每个tensor，把data指向即可，因为是host之前映射过 
+            for (Tensor *t : tv)
+                t->data = const_cast<std::byte *>(src_of(t));
+            continue;
+        }
+        // 如果是非host
+        size_t total = 0;
+        // 统计一共多少
+        for (Tensor *t : tv)
+            total = align_up(total, ALIGN) + t->byte_size();
+        // 统一开辟
+        auto p = dev->alloc(BufferKind::WEIGHTS, total);
+        if (!p) { rollback(); return std::unexpected(p.error()); }
+        arenas.push_back({dev, total, *p});                         // 这里是记录一个backend开辟了多少，初始的指针是在哪，释放的时候要传p
+    }
+
+    // 切分
+    for (auto &a : arenas) {
+        size_t off = 0;
+        // arenas里面的backend，去groups里面对应找到tensor
+        for (Tensor *t : groups[a.dev]) {
+            off = align_up(off, ALIGN);
+            t->data = static_cast<char *>(a.base) + off;
+            off += t->byte_size();
+        }
+    }
+
+    // 上传（只对非 host）
+    for (auto &a : arenas)
+        for (Tensor *t : groups[a.dev]) {
+            // 直接调用host-> 非host拷贝函数即可
+            // t->data是之前开辟好的非host空间
+            auto r = a.dev->copy_tenosr_set(t, src_of(t), 0, t->byte_size());
+            if (!r){
+                // 回滚
+                rollback();
+                return r;
+            }
+        }
+
+    // 记下来，供析构/重载时整块释放
+    for (auto &a : arenas) _weight_arenas.push_back({a.dev, a.base});
+    return {};
+}
+
+std::vector<Tensor *> ModelBase::get_layer_tensors(const LayerWeights &lw){
+    std::vector<Tensor *> ts;
+    ts.reserve(11); // 预分配，避免扩容
+
+    // 把指针装进去，后面在 bind 的时候再统一判空
+    ts.push_back(lw.attn_norm);
+    ts.push_back(lw.wq);
+    ts.push_back(lw.wk);
+    ts.push_back(lw.wv);
+    ts.push_back(lw.wo);
+    ts.push_back(lw.ffn_norm);
+    ts.push_back(lw.ffn_gate);
+    ts.push_back(lw.ffn_up);
+    ts.push_back(lw.ffn_down);
+
+    if (lw.attn_q_norm)
+        ts.push_back(lw.attn_q_norm);
+    if (lw.attn_k_norm)
+        ts.push_back(lw.attn_k_norm);
+
+    return ts;
+};
 
 //----------------------注册表------------------------
 void register_Qwen3(){
