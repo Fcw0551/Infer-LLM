@@ -6,9 +6,9 @@ std::expected<void, std::error_code> Scheduler::execute(Graph& g){
     _subgraphs.clear();
     if (auto r = split_graph(g); !r)
         return r;
-
+    // TODO : 分配策略之前增加图生命周期分析 activation达到复用结果，减少内存占用 
     // 分配内存
-    if (auto r = alloc_graph(); !r)
+    if (auto r = alloc_graph(g); !r)
         return r;
 
     // 执行子图：先把前一阶段算出来、但不在本设备上的边界张量搬过来，再算本子图
@@ -328,61 +328,126 @@ std::expected<void, std::error_code> Scheduler::copy_tensor(Tensor *src, Tensor 
 }
 
 
-// 为计算图中的tensor分配内存
-std::expected<void, std::error_code> alloc_graph(graph &g){
 
+// 为计算图中的 tensor 分配内存
+// 只分配“还没有 data”的激活张量：
+//   - 权重 / 图输入 / rope 表：加载或调用方已经填好 data，跳过
+//   - VIEW（以后 KV 视图）：data 指向别人的 arena，这里不能替它申请
+// backend 已经在 split_graph 的 pass1~4 定好，这里只做预算检查 + 申请
+// 所以本质就是申请那些还没有data的激活值
+std::expected<void, std::error_code> Scheduler::alloc_graph(Graph &g){
+    
+    // 每台设备的可用额度：容量 * MEMORY_FACTOR - 权重常驻
+    auto budgets = init_memory_budgets(g);
+    if (!budgets)
+        return std::unexpected(budgets.error());
+    
+    // 本次已经申请出去的块，失败时统一回滚，避免一半成功一半失败
+    struct Pending
+    {
+        Backend *backend;
+        Tensor *tensor;
+        void *ptr;
+    };
+    std::vector<Pending> allocated;
+
+    auto alloc_one = [&](Tensor *t) -> std::expected<void, std::error_code> {
+        if (!t || t->data){
+            return {};                                   // 已经有人填过 data（rope之类的）
+        }
+        const uint8_t role = static_cast<uint8_t>(t->tensorRole);
+        if (role & static_cast<uint8_t>(TensorRole::TENSOR_ROLE_WEIGHT)){
+            return {};                                   // 权重不归 scheduler 分配
+        }
+        if (role & static_cast<uint8_t>(TensorRole::TENSOR_ROLE_VIEW)){
+            // 视图必须由建图方把 data 指到已有 buffer 上，这里申请会覆盖掉
+            return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+        }
+        if (!t->backend){
+            return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+        }
+        const size_t bytes = t->byte_size();
+        if (bytes == 0){
+            return {};
+        }
+        auto it = budgets.find(t->backend);
+        if (it == budgets.end()){
+            return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+        }
+        if (it->second < bytes){
+            return std::unexpected(std::make_error_code(std::errc::not_enough_memory));
+        }
+        auto p = t->backend->alloc(BufferKind::ACTIVATION,bytes);
+        if (!p){
+            return std::unexpected(p.error());
+        }
+        t->data = *p;
+        it->second -= bytes;
+        allocated.push_back({t->backend, t, *p});
+        return {};
+    };
+
+    auto rollback = [&] {
+        for (auto &a : allocated){
+            a.backend->free(a.ptr);
+            a.tensor->data = nullptr;
+        }
+        allocated.clear();
+    };
+
+    // 内部节点：拓扑序里每个节点的输出都是一块激活
+    for (Tensor *node : g.nodes()){
+        if (auto r = alloc_one(node); !r){
+            rollback();
+            return r;
+        }
+    }
+
+    // 边界拷贝：pass5 用 g.adopt 创建，既不在 nodes() 也不在 leafs() 里
+    for (auto &sub : _subgraphs){
+        for (auto &c : sub.copies){
+            if (auto r = alloc_one(c.second); !r){
+                rollback();
+                return r;
+            }
+        }
+    }
+
+    return {};
 }
 
 
 
 
-// -------- helper ---------
-// 初始化内存容量
-std::unordered_map<Backend*, size_t> Scheduler::init_memory_budgets(Graph &g){
+// --------------------------------- helper -----------------------------
+
+// 初始化内存容量 TODO如果权重过大，内存小，但是有时候也可以通过磁盘的换入换出跑起来
+std::expected<std::unordered_map<Backend*, size_t>,std::error_code> Scheduler::init_memory_budgets(Graph &g){
     std::unordered_map<Backend *, size_t> budgets;
     for (Backend *b : _backends){
-        budgets[b] = b->get_info().memory_bytes * MEMORY_FACTOR;
+        budgets[b] = static_cast<size_t>(b->get_info().memory_bytes * MEMORY_FACTOR);
     }
 
-    // 扣除权重的占用
-     for (Tensor* leaf : g.leafs()) {
-        if (leaf->tensorRole == TensorRole::WEIGHT && leaf->backend) {
-            budgets[leaf->backend] -= leaf->byte_size();
+    // 扣除常驻权重：权重在加载时已经占住了这块内存
+    for (Tensor* leaf : g.leafs()) {
+        const uint8_t role = static_cast<uint8_t>(leaf->tensorRole);
+        if ((role & static_cast<uint8_t>(TensorRole::TENSOR_ROLE_WEIGHT)) == 0) {
+            continue;
         }
+        if (!leaf->backend) {
+            continue;
+        }
+        auto it = budgets.find(leaf->backend);
+        if (it == budgets.end()) {
+            continue;
+        }
+        const size_t bytes = leaf->byte_size();
+        if (bytes > it->second){ 
+            // 权重本身就超了
+            return std::unexpected(std::make_error_code(std::errc::not_enough_memory));
+        }
+        it->second -= bytes;
     }
     return budgets;
-}
-
-// 为算子挑选合适的backend
-std::expected<Backend*, std::error_code> Scheduler::pick_backend_for_node(Tensor* node, const std::unordered_map<Backend*, size_t>& budgets){
-    size_t required = estimate_activation_memory(node);
-
-    // 策略：优先看上游张量在哪个设备，如果它支持且内存够，就跟着上游走
-    for (int i = 0; i < TENSOR_MAX_SRC; ++i) {
-        Tensor* src = node->src[i];
-        if (!src || !src->backend) continue;
-
-        Backend* b = src->backend;
-        // 看一下算子是否支持
-        if (b->supports_op(node->op, *node) && budgets.at[b] >= required) {
-            return b;
-        }
-    }
-
-    // 这里要么backend不支持这个算子，要么内存容量不够
-
-    // 兜底策略：遍历所有设备，找一个支持且内存够的
-    for (Backend* b : _backends) {
-        if (b->supports_op(node->op, *node) && budgets.at[b] >= required) {
-            return b;
-        }
-    }
-    // 最后如果连cpu都不支持  
-    return std::unexpected(std::make_error_code(std::errc::not_enough_memory));
-}
-size_t Scheduler::estimate_activation_memory(Tensor* node) {
-    // 简单版：直接算张量大小
-    // （未来如果考虑生命周期复用，这里可做更精细的计算）
-    return node->byte_size();
 }
 
