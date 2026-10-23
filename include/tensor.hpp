@@ -59,7 +59,35 @@ struct Tensor{
     }
     // 计算tensor大小
     size_t byte_size() const{
-        return element_count() * dataType_size(dataType);
+        const size_t n = element_count();
+        switch (dataType){
+        // 32 个元素一块
+        case GGML_TYPE_Q4_0:
+        case GGML_TYPE_Q4_1:
+        case GGML_TYPE_Q5_0:
+        case GGML_TYPE_Q5_1:
+        case GGML_TYPE_Q8_0:
+        case GGML_TYPE_Q8_1:
+        case GGML_TYPE_IQ4_NL:
+            return (n / 32) * dataType_size(dataType);
+        // 256 个元素一块
+        case GGML_TYPE_Q2_K:
+        case GGML_TYPE_Q3_K:
+        case GGML_TYPE_Q4_K:
+        case GGML_TYPE_Q5_K:
+        case GGML_TYPE_Q6_K:
+        case GGML_TYPE_Q8_K:
+        case GGML_TYPE_IQ1_S:
+        case GGML_TYPE_IQ1_M:
+        case GGML_TYPE_IQ2_XXS:
+        case GGML_TYPE_IQ2_XS:
+        case GGML_TYPE_IQ2_S:
+        case GGML_TYPE_IQ3_XXS:
+        case GGML_TYPE_IQ3_S:
+        case GGML_TYPE_IQ4_XS:
+            return (n / 256) * dataType_size(dataType);
+        default:
+            return n * dataType_size(dataType);
+        }
     }
-
 };
