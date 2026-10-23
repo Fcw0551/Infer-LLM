@@ -195,10 +195,11 @@ private:
         assert(x->dims[3]==y->dims[3]);
     }
 private:
-
-    //int _device_id;
-    //DeviceInfo _info;
-    std::vector<void*> _allocations;   // 谁分配的tensor，要由谁释放
+    //  int _device_id;
+    //  DeviceInfo _info;
+    //  std::unique_ptr<MemoryPool> _weights_pool;      // 权重池
+    //  std::unique_ptr<MemoryPool> _activation_pool;   // 激活池
+    //  std::unique_ptr<MemoryPool> _kvcache_pool;      // kvcache池
     int _n_threads=1;                  // 线程数
     ThreadPool _threadPool;            // 线程池
 };
