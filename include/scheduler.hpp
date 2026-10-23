@@ -77,4 +77,5 @@ private:
     //Graph* _graph;                                                            // TODO 现在暂时没有绑定graph，因为目前每次都要decode
     std::vector<Backend *> _backends;                                           // 管理可用计算设备
     std::vector<Subgraph> _subgraphs;                                           // 子图
+    KVCacheManager* _kv                                                         // kv管理类
 };

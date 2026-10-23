@@ -52,6 +52,7 @@ public:
 
     // 注意力
     static Tensor* soft_max(Graph& g, Tensor* x, Tensor* mask, float scale);
+    // TODO:如果要新增pageattention的话就要新增加接口，
     static Tensor* flash_attn(Graph& g, Tensor* q, Tensor* k, Tensor* v,const AttnParams& p,std::string_view name="flash_attn");
 
     // 索引
