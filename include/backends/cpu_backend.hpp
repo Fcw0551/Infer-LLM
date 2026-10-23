@@ -88,7 +88,7 @@ public:
     }
 
 
-    // 内存管理（Scheduler 分配用）
+    // 内存管理
     std::expected<void*, std::error_code> alloc(size_t bytes) {
         void* ptr=std::malloc(bytes);
         if(!ptr){
@@ -103,8 +103,46 @@ public:
         if (it != _allocations.end()) _allocations.erase(it);
         return std::free(ptr);
     }
+    std::expected<void *, std::error_code> alloc(BufferKind kind, size_t bytes) override{
+        switch (static_cast<uint8_t>(kind)){
+        case 0:
+            void *ptr = _weights_pool.alloc();
+            if (!ptr){
+                return std::unexpected(ptr.error());
+            }
+            return ptr;
+        case 1:
+            void *ptr = _activation_pool.alloc();
+            if (!ptr){
+                return std::unexpected(ptr.error());
+            }
+            return ptr;
+        case 2:
+            void *ptr = _kvcache_pool.alloc();
+            if (!ptr){
+                return std::unexpected(ptr.error());
+            }
+            return ptr;
+        default:
+            break;
+        }
+    }
+    void free(BufferKind /*kind*/, void *ptr) override{
+        switch (static_cast<uint8_t>(kind)){
+        case 0:
+            _weights_pool.free();
+            break;
+        case 1:
+            _activation_pool.free();
+            break;
+        case 2:
+            _kvcache_pool.free();
+            break;
+        default:
+            break;
+        }
+    }
 
-    
     // 跨设备传输  copy结点
     bool is_host() const {
         return true;
