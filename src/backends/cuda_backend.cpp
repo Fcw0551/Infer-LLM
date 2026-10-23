@@ -24,8 +24,8 @@ void register_cuda_backend() {
         []() -> std::vector<DeviceInfo> {
             return probe_cuda_devices(); // 上面的探测函数
         },
-        [](int device_id) -> std::unique_ptr<Backend> {
-            return std::make_unique<CUDABackend>(device_id);
+        [](int device_id, DeviceInfo info, const PoolConfig& cfg) -> std::unique_ptr<Backend> {
+            return std::make_unique<CUDABackend>(device_id, std::move(info), cfg);
         }
     );
 }

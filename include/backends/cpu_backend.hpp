@@ -53,9 +53,10 @@ size_t get_total_memory();
 class CPUBackend : public Backend
 {
 public:
-    CPUBackend(int device_id,DeviceInfo info)
-    :Backend(device_id,info)
+    CPUBackend(int device_id,DeviceInfo info,const PoolConfig&cfg)
+    :Backend(device_id,info,cfg)
     {
+        init_pools(std::make_unique<CPUPhysicalAllocator>());
         std::cout << "cpu 实例化中 device_id: " << _device_id << std::endl;
         cpu_init();
     }

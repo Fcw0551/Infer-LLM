@@ -24,7 +24,7 @@
         }
     }
     // 创建实例
-    std::expected<std::unique_ptr<Backend>, std::error_code> BackendRegistry::create(std::string_view device_name) const{
+    std::expected<std::unique_ptr<Backend>, std::error_code> BackendRegistry::create(std::string_view device_name, const PoolConfig&cfg) const{
         // 先确认设备真实存在
         auto dev_it = std::find_if(_devices.begin(), _devices.end(), [&](const DeviceInfo &d) { return d.name == device_name; });
 
@@ -41,11 +41,11 @@
         if (entry_it == _entries.end()){
             return std::unexpected(std::make_error_code(std::errc::no_such_device));
         }
-        return entry_it->second.create(device_id,dev_it);
+        return entry_it->second.create(device_id,dev_it,cfg);
     }
     
     // 自动选择（优先 CUDA > Metal > CPU，可被环境变量覆盖）
-    std::expected<std::unique_ptr<Backend>, std::error_code> BackendRegistry::create_default() const{
+    std::expected<std::unique_ptr<Backend>, std::error_code> BackendRegistry::create_default(const PoolConfig&cfg) const{
         // 环境变量
         if (const char* env = std::getenv("INFERLLM_DEVICE")) {
             return create(env);   
@@ -56,14 +56,10 @@
         }
 
         // CUDA > Metal > CPU
-        if (_devices.empty()){
-            return std::unexpected(std::make_error_code(std::errc::no_such_device));
-        }
-
         for (auto type : {DeviceType::CUDA, DeviceType::METAL, DeviceType::CPU}){
             for (const auto &d : _devices){
                 if (d.type == type)
-                    return create(d.name);
+                    return create(d.name,cfg);
             }
         }
         return std::unexpected(std::make_error_code(std::errc::no_such_device));

@@ -106,7 +106,7 @@ size_t get_total_memory() {
 void register_cpu_backend(){
     BackendRegistry::instance().register_backend("cpu",
     []()->std::vector<DeviceInfo> { return {DeviceInfo{"cpu", DeviceType::CPU, get_total_memory()}}; },   // probe
-    [](int device_id)->std::unique_ptr<Backend> { return std::make_unique<CPUBackend>(device_id); } // create
+    [](int device_id,DeviceInfo info, const PoolConfig& cfg)->std::unique_ptr<Backend> { return std::make_unique<CPUBackend>(device_id,std::move(info),cfg); } // create
     );
 }
 

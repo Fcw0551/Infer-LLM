@@ -27,23 +27,52 @@ enum class BufferKind : uint8_t{
     ACTIVATION,  // 单次图执行，整块复用
     KVCACHE,     // 请求级预留
 };
-
-
+// 内存池策略
+enum class Strategy{
+    NAIVE,
+    BUMP,
+};
+// 内存池configh
+struct PoolConfig{
+    Strategy weights = Strategy::NAVIE;    
+    Strategy activation = Strategy::NAIVE; 
+    Strategy kvcache = Strategy::NAIVE;
+};
 
 class Backend
 {
 protected:
-    int _device_id;
-    DeviceInfo _info;
-    std::unique_ptr<MemoryPool> _weights_pool;      // 权重池
-    std::unique_ptr<MemoryPool> _activation_pool;   // 激活池
-    std::unique_ptr<MemoryPool> _kvcache_pool;      // kvcache池
+    int _device_id;                                         // 设备id
+    DeviceInfo _info;                                       // 设备信息
+    PoolConfig _pool_config;                                // 内存池的config
+    std::unique_ptr<PhysicalAllocator> _phys_allocator;     // 实际的，原生的物理接口
+    std::unique_ptr<MemoryPool> _weights_pool;              // 权重池
+    std::unique_ptr<MemoryPool> _activation_pool;           // 激活池
+    std::unique_ptr<MemoryPool> _kvcache_pool;              // kvcache池
 public:
-    Backend(int device_id,DeviceInfo info)
+    Backend(int device_id,DeviceInfo info,const PoolConfig& cfg)
     :_device_id(device_id)
     ,_info(info)
+    ,_pool_configh(cfg)
     {}
     virtual ~Backend() = default;
+    // 根据物理原生接口去初始化backend的内存池
+    void init_pools(std::unique_ptr<PhysicalAllocator> phys){
+        _phys_allocator = std::move(phys);
+        _weights_pool = make_pool(_pool_config.weights, *_phys_allocator);
+        _activation_pool = make_pool(_pool_config.activation, *_phys_allocator);
+        _kvcache_pool = make_pool(_pool_config.kvcache, *_phys_allocator);
+    }
+    inline std::unique_ptr<MemoryPool> make_pool(PoolConfig::Strategy s, PhysicalAllocator &a){
+        switch (s){
+        case PoolConfig::Strategy::NAIVE:
+            return std::make_unique<NaivePool>(a);
+        case PoolConfig::Strategy::BUMP:    // TODO: BumpPool 还没写
+        case PoolConfig::Strategy::CACHING: // TODO: CachingPool 还没写
+        default:
+            return std::make_unique<NaivePool>(a);
+        }
+    }
 
     const DeviceInfo& get_info() const { return _info; }
     // 身份（用户 + 调试）
@@ -88,7 +117,7 @@ public:
 class BackendRegistry {
 public:
     using ProbeFunc = std::function<std::vector<DeviceInfo>()>;
-    using CreateFunc = std::function<std::unique_ptr<Backend>(int device_id)>;
+    using CreateFunc = std::function<std::unique_ptr<Backend>(int device_id, const DeviceInfo info, const PoolConfig &cfg)>;
     // 单例
     static BackendRegistry &instance();
 
@@ -99,10 +128,10 @@ public:
     void probe_all();
 
     // 创建实例
-    std::expected<std::unique_ptr<Backend>, std::error_code> create(std::string_view name) const;
-    
+    std::expected<std::unique_ptr<Backend>, std::error_code> create(std::string_view name, const PoolConfig &cfg) const;
+
     // 自动选择（优先 CUDA > Metal > CPU，可被环境变量覆盖）
-    std::expected<std::unique_ptr<Backend>, std::error_code> create_default() const;
+    std::expected<std::unique_ptr<Backend>, std::error_code> create_default(const PoolConfig &cfg) const;
 
     // 查询探测结果
     const std::vector<DeviceInfo> &available_devices() const;
