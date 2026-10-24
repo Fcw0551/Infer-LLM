@@ -47,13 +47,13 @@ std::expected<void, std::error_code> Graph::compute(){
         }
     }
 
-    // 按拓扑序执行内部节点
-    for (Tensor *node : _nodes){
-        // if (auto r = backend.compute(*node); !r){
-        //     return r;
-        // }
-        std::cout<<"正在执行算子："<<node->name<<std::endl;
-    }
+    // // 按拓扑序执行内部节点 （之前调试剩下的）
+    // for (Tensor *node : _nodes){
+    //     // if (auto r = backend.compute(*node); !r){
+    //     //     return r;
+    //     // }
+    //    // std::cout<<"正在执行算子："<<node->name<<std::endl;
+    // }
 
     return {};
 }

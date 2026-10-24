@@ -11,8 +11,8 @@ void register_cuda_backend();
 // TODO（优化的点还有很多，现在是实现一个基础版本）
 class CUDABackend : public Backend{
 public:
-   CUDABackend(int device_id,DeviceInfo info) 
-    :Backend(device_id,info)
+    CUDABackend(int device_id,DeviceInfo info,const PoolConfig&cfg) 
+    :Backend(device_id,info,cfg)
     {
         std::cout << "cuda 实例化中 device_id: " << device_id << std::endl;
         // 切换到目标设备
@@ -27,13 +27,8 @@ public:
         _stream = stream;
     }
 
-    ~Backend() {
-        std::cout<<"cuda 析构中 device_id: " <<device_id<<std::endl;
-        // 先释放所有分配
-        for (void *p : _allocations)
-            cudaFree(p);
-        _allocations.clear();
-
+    ~CUDABackend() {
+        std::cout<<"cuda 析构中 device_id: " << _device_id<<std::endl;
         // 销毁 stream
         if (_stream){
             cudaSetDevice(_device_id);
@@ -62,20 +57,20 @@ public:
     }
 
     // 内存管理
-    std::expected<void*, std::error_code> alloc(size_t bytes) = 0;
-    void free(void* ptr)   = 0;
+    std::expected<void *, std::error_code> alloc(BufferKind kind,size_t bytes);
+    void free(BufferKind kind, void *ptr);
 
     // 跨设备传输  copy结点
     bool is_host() const {
         return false;
     }
     // 从 host 的内存数据 写入这个 tensor 所在的设备的buffer
-    std::expected<void, std::error_code> copy_tenosr_set(Tensor *tensor, const void *data, size_t offset, size_t size);
+    std::expected<void, std::error_code> copy_tensor_set(Tensor *tensor, const void *data, size_t offset, size_t size);
     // 从这个 tensor 所在的设备 buffer，读数据到 host 内存。
-    std::expected<void, std::error_code> copy_tenosr_get(Tensor *tensor, void *data, size_t offset, size_t size);
+    std::expected<void, std::error_code> copy_tensor_get(const Tensor *tensor, void *data, size_t offset, size_t size);
     // 设备与设备之间可能要有高速，不需要经过cpu，如果这个方案不行，最后要退回cpu兜底
     //(optional) tensor copy: dst is in the buffer, src may be in any buffer, including buffers from a different backend (return false if not supported)
-    bool copy_tensor_high(const Tensor *src, Tensor *dst) const ;   
+    std::expected<bool, std::error_code> copy_tensor_high(const Tensor *src, Tensor *dst) const ;   
                                                    
                                                         
 

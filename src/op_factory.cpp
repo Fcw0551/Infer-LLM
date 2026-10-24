@@ -142,7 +142,7 @@ Tensor *OpFactory::flash_attn(Graph &g, Tensor *q, Tensor *k, Tensor *v, const A
     // q[n_embd,n_tokens]
     // k[n_embd,n_tokens]
     // v[n_embd,n_tokens]
-    Tensor *result = create_tensor(g, name, q->dataType, {q->dims[0], q->dims[1], 1, 1});
+    Tensor *result = create_tensor(g, name, q->dataType, {q->dims[0], q->dims[1],q->dims[2], q->dims[3]});
     result->op = OperationType::GGML_OP_FLASH_ATTN_EXT;
     result->src[0] = q;
     result->src[1] = k;

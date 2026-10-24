@@ -1,78 +1,133 @@
-#include "../include/gguf_parser.hpp"
-#include "../include/model.hpp"
-#include "../include/models/Qwen3.hpp"
-#include "../include/graph.hpp"
-#include "../include/log.h"
-#include "../include/backend.hpp"
-#include <numeric>
+#include <iostream>
+#include <memory>
+#include<../include/backend.hpp>
+#include<../include/gguf_parser.hpp>
+#include <../include/model.hpp>
+#include<../include/graph.hpp>
+#include <../include/scheduler.hpp>
 int main(){
-
-    // register_all_models();                      //注册模型 
-
-    // auto gguf=GGUFContext::load("/home/wcf/Infer-LLM/models/Qwen3-0.6B-Q8_0.gguf");
-    // (*gguf).print(10);
-    // auto result=ModelBase::load_model(std::move(*gguf));
-    // if(!result){
-    //     std::cout<<"error"<<result.error()<<std::endl;
-    //     return -1;
-    // }
-    // std::unique_ptr<ModelBase> qwen3_ptr=std::move(*result);
-    // auto qwen3=qwen3_ptr.get();
-    // qwen3->load_hparams();
-    // auto result1=qwen3->load_weight();
-    // if(!result1){
-    //     std::cout<<"error"<<result1.error()<<std::endl;
-    //     return -1;
-    // }
-    
-    // //要构造一个graph context
-    // GraphContext gc;
-    // // 准备 token ids 和 positions
-    // std::vector<int32_t> token_ids = {151643, 100, 200, 300};
-    // std::vector<int32_t> positions(token_ids.size());
-    // std::iota(positions.begin(), positions.end(), 0); // [0,1,2,3]
-
-    // // 构造 input_tokens Tensor
-    // auto inp_tokens = std::make_unique<Tensor>("input_tokens",DataType::GGML_TYPE_I32,std::initializer_list<int64_t>{static_cast<int64_t>(token_ids.size())});
-    // inp_tokens->op = OperationType::GGML_OP_NONE;
-    // inp_tokens->data = std::malloc(token_ids.size() * sizeof(int32_t));
-    // std::memcpy(inp_tokens->data, token_ids.data(),token_ids.size() * sizeof(int32_t));
-
-    // //  构造 input_pos Tensor
-    // auto inp_pos = std::make_unique<Tensor>("input_pos",DataType::GGML_TYPE_I32,std::initializer_list<int64_t>{static_cast<int64_t>(positions.size())});
-    // inp_pos->op = OperationType::GGML_OP_NONE;
-    // inp_pos->data = std::malloc(positions.size() * sizeof(int32_t));
-    // std::memcpy(inp_pos->data, positions.data(),positions.size() * sizeof(int32_t));
-
-    // gc.set_input_tokens(inp_tokens.get());
-    // gc.set_input_pos(inp_pos.get());
-    // //建图
-    // auto g=qwen3->build_graph(gc);
-
-    // (*g).compute();   // 拓扑序在这一步建好，dump 必须放在它后面
-
-    // // 把计算图导成 dot：文件落在 models_dot/qwen3_graph.dot（和 include/ src/ 同级），
-    // // 丢到 https://dreampuf.github.io/GraphvizOnline/ 看，或本地 `dot -Tsvg ...`。
-    // // 后两个参数是层的闭区间 [lo, hi]：全图 820 个点会把在线渲染器（viz.js 堆只有 16MB）撑爆，
-    // // 所以这里只导第 0 层；想看全图传 (0, INT_MAX)，只想看某几层就改这两个数。
-    // // 失败只是画不出图，不影响推理，所以只警告不上抛。
-    // if (auto r = DotWriter::dump(*g, DotWriter::dot_path("qwen3_graph.dot"), 0, 0); !r) {
-    //     std::cerr << "dump graph failed: " << r.error().message() << std::endl;
-    // }
-
-    register_all_backends();                    //注册后端
-    auto& reg=BackendRegistry::instance();
-    reg.probe_all();                             //探测
-    auto result=reg.create("cuda:0");                   //实例化后端
-    if(!result){
-        std::cerr << "出错: " << result.error().message() << "\n";
-        return 1;   //
-    }
+    // ----------- 加载backend ------------
+    // 注册 cpu gpu等
+    register_all_backends();
+    // 单例注册器
+    BackendRegistry& reg = BackendRegistry::instance();
+    // 探测
+    reg.probe_all();
+    // 打印
     reg.print();
-    std::unique_ptr<Backend> cpu = std::move(*result);
+    // 实例化设备 这里选择cpu先，先把cpu跑起来
+    PoolConfig pool_cfg = { 
+                            .weights = Strategy::NAIVE,
+                            .activation = Strategy::NAIVE,
+                            .kvcache = Strategy::NAIVE,
+    };
+    std::vector<Backend*> bc;
+    auto result=reg.create("cpu",pool_cfg);
+    if(!result){
+        const auto &ec = result.error();
+        std::cerr << "创建后端失败: " << ec.message()
+                  << "，错误码: " << ec.value()
+                  << "，类别: " << ec.category().name()
+                  << '\n';
+        return 1;
+    }
+    std::unique_ptr<Backend> cpu_backend = std::move(*result);
+    bc.push_back(cpu_backend.get());
 
-    
+    // ---------------加载backend完成，并且只是指定了cpu-------------
+    //     name:         cuda:0
+    // DeviceType:   CUDA
+    // memory_bytes: 7441743872
+    // name:         cpu
+    // DeviceType:   CPU
+    // memory_bytes: 5772193792
+    // cpu 实例化中 device_id: 0
+    // [cpu] default threads = 8
+    // cpu 析构中 device_id: 0
+
+
+    // ---------------gguf的解析-----------------
+    auto gguf=GGUFContext::load("/home/wcf/Infer-LLM/models/Qwen3-0.6B-F32.gguf");
+    (*gguf).print(10);                                                              // 打印10个tensor
+    // -------------加载模型--------------
+    register_all_models();
+    // -------------传ggufcontext给modelbase，进而实例化出模型----------------
+    auto model_result = ModelBase::load_model(std::move(*gguf));
+    if (!model_result)
+    {
+        std::cerr << "实例化模型失败: "
+                  << model_result.error().message() << '\n';
+        return 1;
+    }
+    // --------------实例化出模型-----------------
+    std::unique_ptr<ModelBase> qwen3_ptr = std::move(*model_result);
+    qwen3_ptr->load_hparams();
+    auto load_weight_result=qwen3_ptr->load_weight();
+    if (!load_weight_result){
+        const auto &ec = load_weight_result.error();
+        std::cerr << "load_weight失败: " << ec.message()
+                  << "，错误码: " << ec.value()
+                  << "，类别: " << ec.category().name()
+                  << '\n';
+        return 1;
+    }
+    // 放置权重
+    PlacementConfig placement_cfg{ 1024, 4, 1ull << 30, 256ull << 20};
+    auto placement_result = qwen3_ptr->plan_weights_placement(bc, placement_cfg);
+
+    if (!placement_result){
+        std::cerr << "权重放置失败: "
+                  << placement_result.error().message() << '\n';
+        return 1;
+    }
+
+    // ------------------ 建图 ----------------------
+    // 手工指定测试 token ID；位置从 0 开始，对应一次 prefill 输入。
+    // 数组先于 context 和 graph 创建，保证图使用期间 data 始终有效。
+    std::array<int32_t, 4> token_ids{151643, 100, 200, 300};
+    std::array<int32_t, 4> positions{0, 1, 2, 3};
+    const int64_t n_tokens = static_cast<int64_t>(token_ids.size());
+    // 构建上下文
+    GraphContext graph_ctx;
+    Tensor *input_tokens = graph_ctx.make_tensor("input_tokens", DataType::GGML_TYPE_I32, {n_tokens, 1, 1, 1}); //输入token
+    input_tokens->data = token_ids.data();      
+    input_tokens->tensorRole = TensorRole::TNESOR_ROLE_INPUT;
+    input_tokens->backend = cpu_backend.get();
+    input_tokens->device = DeviceType::CPU;
+
+    Tensor *input_pos = graph_ctx.make_tensor("input_pos", DataType::GGML_TYPE_I32, {n_tokens, 1, 1, 1});       // 输入token的位置
+    input_pos->data = positions.data();
+    input_pos->tensorRole = TensorRole::TNESOR_ROLE_INPUT;
+    input_pos->backend = cpu_backend.get();
+    input_pos->device = DeviceType::CPU;
+
+    graph_ctx.set_input_tokens(input_tokens);
+    graph_ctx.set_input_pos(input_pos);
+
+    // 传入上下文
+    auto graph_result = qwen3_ptr->build_graph(graph_ctx);
+    if (!graph_result)
+    {
+        std::cerr << "建图失败: " << graph_result.error().message() << '\n';
+        return 1;
+    }
+    Graph& g=*graph_result;
+    // 生成拓扑序，同时检查叶子节点的数据是否就绪
+    auto topo_result = g.compute();
+    if (!topo_result)
+    {
+        std::cerr << "图准备失败: "
+                  << topo_result.error().message() << '\n';
+        return 1;
+    }
+
+    // ----------------- 调度器，传图给调度器---------------
+    Scheduler sched(bc);
+    auto exe_result = sched.execute(g);
+    if (!exe_result){
+        std::cerr << "执行失败：" << exe_result.error().message() << '\n';
+    }
+
     return 0;
+
 }
-
-

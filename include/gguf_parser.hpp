@@ -30,13 +30,13 @@ struct TensorInfo {
         return n;
     }
     // 获取有效维度视图（忽略未使用的维度）
-    std::span<const uint64_t> shape() const noexcept {
+    std::span<const int64_t> shape() const noexcept {
         return {_dims.data(), _n_dims};
     }
 
     std::string _name;                              // 如 "blk.0.attn_q.weight"
     uint32_t    _n_dims;                            // 维度数，1~4
-    std::array<uint64_t, GGUF_MAX_DIMS> _dims{};       // 维度大小
+    std::array<int64_t, GGUF_MAX_DIMS> _dims{};       // 维度大小
     DataType    _type;                               // 数据类型
     uint64_t    _offset;                             // 相对于数据区起始的字节偏移
 };
@@ -182,7 +182,7 @@ public:
     const GGUFMetadata& metadata() const { return _metadata; }
     // 返回数据区起始，方便model当中加载tensor确定位置
     size_t data_region_offset() const { return _data_region_offset; }
-    size_t data_base() const { return _file.view().data(); }
+    const std::byte* data_base() const { return _file.view().data(); }
     //打印kv和tensor相关信息
     void print(size_t tensor_limit = 0) const;
 private:

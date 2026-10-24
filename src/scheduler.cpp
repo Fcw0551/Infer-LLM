@@ -2,6 +2,7 @@
 
 // 每次推理传一张全新的图进来
 std::expected<void, std::error_code> Scheduler::execute(Graph& g){
+    std::cout<<"execute"<<std::endl;
     // 切分子图 
     _subgraphs.clear();
     if (auto r = split_graph(g); !r)
@@ -10,7 +11,6 @@ std::expected<void, std::error_code> Scheduler::execute(Graph& g){
     // 分配内存
     if (auto r = alloc_graph(g); !r)
         return r;
-
     // 执行子图：先把前一阶段算出来、但不在本设备上的边界张量搬过来，再算本子图
     for (auto &sub : _subgraphs){
         for (auto &c : sub.copies){
@@ -318,10 +318,10 @@ std::expected<void, std::error_code> Scheduler::copy_tensor(Tensor *src, Tensor 
 
     // 兜底：src 设备 -> host -> dst 设备
     std::vector<char> host(src->byte_size());
-    if (auto r = src->backend->copy_tenosr_get(src, host.data(), 0, host.size()); !r) {
+    if (auto r = src->backend->copy_tensor_get(src, host.data(), 0, host.size()); !r) {
         return r;
     }
-    if (auto r = dst->backend->copy_tenosr_set(dst, host.data(), 0, host.size()); !r) {
+    if (auto r = dst->backend->copy_tensor_set(dst, host.data(), 0, host.size()); !r) {
         return r;
     }
     return {};
@@ -338,10 +338,12 @@ std::expected<void, std::error_code> Scheduler::copy_tensor(Tensor *src, Tensor 
 std::expected<void, std::error_code> Scheduler::alloc_graph(Graph &g){
     
     // 每台设备的可用额度：容量 * MEMORY_FACTOR - 权重常驻
-    auto budgets = init_memory_budgets(g);
-    if (!budgets)
-        return std::unexpected(budgets.error());
-    
+    auto budgets_result = init_memory_budgets(g);
+    if (!budgets_result)
+        return std::unexpected(budgets_result.error());
+
+    auto budgets = *budgets_result;
+
     // 本次已经申请出去的块，失败时统一回滚，避免一半成功一半失败
     struct Pending
     {
@@ -389,7 +391,7 @@ std::expected<void, std::error_code> Scheduler::alloc_graph(Graph &g){
 
     auto rollback = [&] {
         for (auto &a : allocated){
-            a.backend->free(a.ptr);
+            a.backend->free(BufferKind::ACTIVATION,a.ptr);
             a.tensor->data = nullptr;
         }
         allocated.clear();

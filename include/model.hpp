@@ -9,8 +9,8 @@
 #include "tensor.hpp"
 #include "graph.hpp"
 #include "util.hpp"
+#include "../include/backend.hpp"
 
-class Backend;
 
 //model name……
 struct HParams {
@@ -28,7 +28,8 @@ struct HParams {
     //归一化
     float    rms_norm_eps = 1e-5f;
     // 可选/扩展字段 
-    uint32_t n_embd_head = 0;      // 每个头的维度，通常 = n_embd / n_head
+    uint32_t n_embd_head_k = 0;     // q k 每个头的维度，通常 = n_embd / n_head
+    uint32_t n_embd_head_v = 0;     // v   每个头的维度，通常 = n_embd / n_head
 };
 
 struct LayerWeights {
@@ -95,19 +96,11 @@ protected:
     std::vector<std::unique_ptr<Tensor>> _tensor_pool; // Tensor 所有权
     std::vector<Backend*> _dev_layer;                  // size = n_layer，每层归属（后续加载/KV 用）
     Backend* _dev_output=nullptr;                      // output的device
+    Backend* _dev_input=nullptr;                      // input的device
     std::vector<Arena> _weight_arenas;                 // 权重申请和释放的管理
 public:
     ModelBase(GGUFContext&& gguf) : _gguf(std::move(gguf)) {}
-    ~ModelBase(){
-        // 释放weight TODO backend后死
-        if(!_weight_arenas.empty()){
-            for(auto& it:_weight_arenas){
-                //virtual void free(BufferKind kind, void *ptr) = 0;
-                it.backend->free(BufferKind::WEIGHTS,it.base);
-            }
-        }
-        _weight_arenas.clear();
-    }
+    ~ModelBase();
     //加载
     static std::expected<std::unique_ptr<ModelBase>, std::error_code> load_model(GGUFContext&& gguf);
     //加载超参数->整体架构
@@ -115,7 +108,7 @@ public:
     //加载权重
     std::expected<void,std::error_code> load_weight();
     // 如果用户没有指定层数，那么这里就优先安排GPU 函数应该再split_graph之前调用
-    std::expected<void, std::error_code> plan_weights_placement(const std::vecotr<Backend*>& devices,const struct PlacementConfig&cfg);
+    std::expected<void, std::error_code> plan_weights_placement(const std::vector<Backend*>& devices,const struct PlacementConfig&cfg);
     //不同的模型构建计算图的方式不同
     virtual std::expected<Graph, std::error_code> build_graph(GraphContext& g_ctx) const=0; 
 private:

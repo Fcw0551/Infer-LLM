@@ -6,7 +6,7 @@
 #include"graph.hpp"
 #include "util.hpp"
 #include "../include/backend.hpp"   
-#include "kvcacheManager.hpp"
+//#include "kvcacheManager.hpp"
 
 // 承担计算资源与计算任务的调度
     // 管理可用计算设备
@@ -73,5 +73,5 @@ private:
     //Graph* _graph;                                                            // TODO 现在暂时没有绑定graph，因为目前每次都要decode
     std::vector<Backend *> _backends;                                           // 管理可用计算设备
     std::vector<Subgraph> _subgraphs;                                           // 子图
-    KVCacheManager* _kv = nullptr;                                              // kv管理类
+    //KVCacheManager* _kv = nullptr;                                              // kv管理类
 };

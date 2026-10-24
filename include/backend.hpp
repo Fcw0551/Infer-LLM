@@ -13,7 +13,7 @@
 #include<iostream>
 #include "graph.hpp"
 #include "memoryPool.hpp"
-
+#include "./memoryPools/naivePool.hpp"
 // 探测结果：描述一个可用设备
 struct DeviceInfo{
     std::string name; // "cpu" / "cuda:0"
@@ -31,10 +31,11 @@ enum class BufferKind : uint8_t{
 enum class Strategy{
     NAIVE,
     BUMP,
+    CACHING,
 };
 // 内存池configh
 struct PoolConfig{
-    Strategy weights = Strategy::NAVIE;    
+    Strategy weights = Strategy::NAIVE;    
     Strategy activation = Strategy::NAIVE; 
     Strategy kvcache = Strategy::NAIVE;
 };
@@ -53,7 +54,7 @@ public:
     Backend(int device_id,DeviceInfo info,const PoolConfig& cfg)
     :_device_id(device_id)
     ,_info(info)
-    ,_pool_configh(cfg)
+    ,_pool_config(cfg)
     {}
     virtual ~Backend() = default;
     // 根据物理原生接口去初始化backend的内存池
@@ -63,14 +64,16 @@ public:
         _activation_pool = make_pool(_pool_config.activation, *_phys_allocator);
         _kvcache_pool = make_pool(_pool_config.kvcache, *_phys_allocator);
     }
-    inline std::unique_ptr<MemoryPool> make_pool(PoolConfig::Strategy s, PhysicalAllocator &a){
+    inline std::unique_ptr<MemoryPool> make_pool(Strategy s, PhysicalAllocator &raw){
         switch (s){
-        case PoolConfig::Strategy::NAIVE:
-            return std::make_unique<NaivePool>(a);
-        case PoolConfig::Strategy::BUMP:    // TODO: BumpPool 还没写
-        case PoolConfig::Strategy::CACHING: // TODO: CachingPool 还没写
+        case Strategy::NAIVE:
+            return std::make_unique<NaivePool>(raw);
+        case Strategy::BUMP:    // TODO: BumpPool 还没写
+            break;
+        case Strategy::CACHING: // TODO: CachingPool 还没写
+            break;
         default:
-            return std::make_unique<NaivePool>(a);
+            return std::make_unique<NaivePool>(raw);
         }
     }
 
@@ -83,9 +86,6 @@ public:
     virtual bool supports_op(OperationType op, const Tensor& t) const = 0;
 
     // 内存管理
-    // 随意来一块
-    virtual std::expected<void *, std::error_code> alloc(size_t bytes) = 0;
-    virtual void free(void *ptr) = 0;
     // 选择各种池来一块
     virtual std::expected<void *, std::error_code> alloc(BufferKind kind, size_t bytes) = 0;
     virtual void free(BufferKind kind, void *ptr) = 0;
@@ -93,12 +93,12 @@ public:
     // 跨设备传输  copy结点
     virtual bool is_host() const = 0;
     // 从 host 的内存数据 写入这个 tensor 所在的设备的buffer
-    virtual std::expected<void, std::error_code> copy_tenosr_set(Tensor *tensor, const void *data, size_t offset, size_t size) = 0;
+    virtual std::expected<void, std::error_code> copy_tensor_set(Tensor *tensor, const void *data, size_t offset, size_t size) = 0;
     // 从这个 tensor 所在的设备 buffer，读数据到 host 内存。
-    virtual std::expected<void, std::error_code> copy_tenosr_get(const Tensor *tensor, void *data, size_t offset, size_t size) = 0;
+    virtual std::expected<void, std::error_code> copy_tensor_get(const Tensor *tensor, void *data, size_t offset, size_t size) = 0;
     // 设备与设备之间可能要有高速，不需要经过cpu，如果这个方案不行，最后要退回cpu兜底，用的是dst的设备的能力
     //(optional) tensor copy: dst is in the buffer, src may be in any buffer, including buffers from a different backend (return false if not supported)
-    virtual bool copy_tensor_high(const Tensor *src, Tensor *dst) const ;   
+    virtual std::expected<bool, std::error_code> copy_tensor_high(const Tensor *src, Tensor *dst) const = 0;
     
     
     // 执行 scheduler传子图给每个后端执行

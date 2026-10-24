@@ -5,6 +5,9 @@
 #include <mutex>
 #include<condition_variable>
 #include <cmath>
+#include <fstream>
+#include <sstream>
+#include <string>
 // 线程池
 class ThreadPool
 {
@@ -43,6 +46,8 @@ private:
     bool _stop = false;                // 停止标志
 };
 
+
+// --------- cpu 注册模块---------------------
 void register_cpu_backend();
 // cpu 读取total_ram
 size_t get_total_memory();
@@ -63,9 +68,6 @@ public:
 
     ~CPUBackend() {
         std::cout<<"cpu 析构中 device_id: " <<_device_id<<std::endl;
-        for (void* p : _allocations) {
-            std::free(p);          
-        }
     };
 
     // 身份（用户 + 调试）
@@ -85,59 +87,35 @@ public:
     // 设置线程数量
     void set_n_threads(size_t n){
         _n_threads=n;
-        _pool.init(n);   //重建线程池，刚刚cpu_init建过
+        _threadPool.init(n);   //重建线程池，刚刚cpu_init建过
     }
 
 
     // 内存管理
-    std::expected<void*, std::error_code> alloc(size_t bytes) {
-        void* ptr=std::malloc(bytes);
-        if(!ptr){
-            return std::unexpected(make_error_code(std::errc::no_buffer_space));
-        }
-        _allocations.push_back(ptr);    
-        return ptr;
-    }
-    void free(void* ptr) {
-        if (!ptr) return;
-        auto it = std::find(_allocations.begin(), _allocations.end(), ptr);
-        if (it != _allocations.end()) _allocations.erase(it);
-        return std::free(ptr);
-    }
-    std::expected<void *, std::error_code> alloc(BufferKind kind, size_t bytes) override{
-        switch (static_cast<uint8_t>(kind)){
-        case 0:
-            void *ptr = _weights_pool.alloc();
-            if (!ptr){
-                return std::unexpected(ptr.error());
-            }
-            return ptr;
-        case 1:
-            void *ptr = _activation_pool.alloc();
-            if (!ptr){
-                return std::unexpected(ptr.error());
-            }
-            return ptr;
-        case 2:
-            void *ptr = _kvcache_pool.alloc();
-            if (!ptr){
-                return std::unexpected(ptr.error());
-            }
-            return ptr;
+    std::expected<void* , std::error_code> alloc(BufferKind kind, size_t bytes) override{
+        switch (kind)
+        {
+        case BufferKind::WEIGHTS:
+            return _weights_pool->alloc(bytes);
+        case BufferKind::ACTIVATION:
+            return _activation_pool->alloc(bytes);
+        case BufferKind::KVCACHE:
+            return _kvcache_pool->alloc(bytes);
         default:
-            break;
+            return std::unexpected(
+                std::make_error_code(std::errc::invalid_argument));
         }
     }
-    void free(BufferKind /*kind*/, void *ptr) override{
-        switch (static_cast<uint8_t>(kind)){
-        case 0:
-            _weights_pool.free();
+    void free(BufferKind kind, void *ptr) override{
+        switch (kind){
+        case BufferKind::WEIGHTS:
+            _weights_pool->free(ptr);
             break;
-        case 1:
-            _activation_pool.free();
+        case BufferKind::ACTIVATION:
+            _activation_pool->free(ptr);
             break;
-        case 2:
-            _kvcache_pool.free();
+        case BufferKind::KVCACHE:
+            _kvcache_pool->free(ptr);
             break;
         default:
             break;
@@ -149,12 +127,12 @@ public:
         return true;
     }
     // 从 host 的内存数据 写入这个 tensor 所在的设备的buffer
-    std::expected<void, std::error_code> copy_tenosr_set(Tensor *tensor, const void *data, size_t offset, size_t size) ;
+    std::expected<void, std::error_code> copy_tensor_set(Tensor *tensor, const void *data, size_t offset, size_t size) ;
     // 从这个 tensor 所在的设备 buffer，读数据到 host 内存。
-    std::expected<void, std::error_code> copy_tenosr_get(const Tensor *tensor, void *data, size_t offset, size_t size) ;
+    std::expected<void, std::error_code> copy_tensor_get(const Tensor *tensor, void *data, size_t offset, size_t size) ;
     // 设备与设备之间可能要有高速，不需要经过cpu，如果这个方案不行，最后要退回cpu兜底
     //(optional) tensor copy: dst is in the buffer, src may be in any buffer, including buffers from a different backend (return false if not supported)
-    bool copy_tensor_high(const Tensor *src, Tensor *dst) const {
+    std::expected<bool, std::error_code> copy_tensor_high(const Tensor *src, Tensor *dst) const {
         return false;
     }   
 

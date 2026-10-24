@@ -6,7 +6,8 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 
 	Graph g; // 后面返回出去tensor的生命依旧被引用，只有全部被析构的时候才没
 
-	const uint32_t n_embd_head = _hparams.n_embd_head; // 每个头的维度
+	const uint32_t n_embd_head_k = _hparams.n_embd_head_k; // 每个头的维度
+	const uint32_t n_embd_head_v = _hparams.n_embd_head_v; // 每个头的维度
 	const uint32_t n_head = _hparams.n_head;		   // 头数
 	const uint32_t n_head_kv = _hparams.n_head_kv;		//GQA
 
@@ -18,12 +19,12 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 
 	Tensor *token_embd = _weights.token_embd;
 
-	Tensor *inpL = OpFactory::embedding(g, input_token, token_embd); // embedding  inpL=input to the layer(当前层输入)
+	Tensor *inpL = OpFactory::embedding(g, token_embd, input_token); // embedding  inpL=input to the layer(当前层输入)
 
 	//rope表
     auto r = g_ctx.get_rope_theta_table(
         _hparams.rope_theta,   // 1000000.0f
-        _hparams.n_embd_head,     // 128
+        _hparams.n_embd_head_k,     // 128
         _hparams.n_ctx_train   // 32768
     );
 	if(!r){
@@ -37,8 +38,8 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 	AttnParams ap;
 	ap.n_head = n_head;						          // 16
 	ap.n_head_kv = n_head_kv;					      // 8
-	ap.head_dim = n_embd_head;					   	  // 128
-	ap.scale = 1.0f / std::sqrt(float(n_embd_head));  // 1/sqrt(128)
+	ap.head_dim = n_embd_head_k;					  // 128
+	ap.scale = 1.0f / std::sqrt(float(n_embd_head_k));  // 1/sqrt(128)
 	ap.causal = true;									      // Prefill 阶段开启
 	ap.n_ctx = static_cast<uint32_t>(n_tokens);   		      // 填 token 数(TODO，先简单处理，因为还没有实现kvcache。要区分要算多少token)
 	ap.sliding_window = 0;								      // Qwen3 这里不需要，就填 0
@@ -56,27 +57,27 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 		Tensor *q = OpFactory::mul_mat(g, _weights.layers[i].wq, cur, "q_proj" + std::to_string(i));
 		Tensor *k = OpFactory::mul_mat(g, _weights.layers[i].wk, cur, "k_proj" + std::to_string(i));
 		Tensor *v = OpFactory::mul_mat(g, _weights.layers[i].wv, cur, "v_proj" + std::to_string(i));
+		
+		// q_norm k_norm v->reshape
+		Tensor *q_reshape = OpFactory::reshape(g, q, {n_embd_head_k, n_head, n_tokens, 1}, "q_reshape_" + std::to_string(i));
+		Tensor *k_reshape = OpFactory::reshape(g, k, {n_embd_head_k, n_head_kv, n_tokens, 1}, "k_reshape_" + std::to_string(i));
+		Tensor *v_reshape = OpFactory::reshape(g, v, {n_embd_head_v, n_head_kv, n_tokens, 1}, "v_reshape_" + std::to_string(i));
 
 		// qk -> rms_norm
-		Tensor *q_norm = OpFactory::rms_norm(g, q, _weights.layers[i].attn_q_norm, _hparams.rms_norm_eps, "attn_q_norm_" + std::to_string(i));
-		Tensor *k_norm = OpFactory::rms_norm(g, k, _weights.layers[i].attn_k_norm, _hparams.rms_norm_eps, "attn_k_norm_" + std::to_string(i));
-
-		// q_norm k_norm v->reshape
-		Tensor *q_reshape = OpFactory::reshape(g, q_norm, {n_embd_head, n_head, n_tokens, 1}, "q_reshape_" + std::to_string(i));
-		Tensor *k_reshape = OpFactory::reshape(g, k_norm, {n_embd_head, _head_kv, n_tokens, 1}, "k_reshape_" + std::to_string(i));
-		Tensor *v_reshape = OpFactory::reshape(g, v, {n_embd_head, _head_kv, n_tokens, 1}, "v_reshape_" + std::to_string(i));
-
+		Tensor *q_norm = OpFactory::rms_norm(g, q_reshape, _weights.layers[i].attn_q_norm, _hparams.rms_norm_eps, "attn_q_norm_" + std::to_string(i));
+		Tensor *k_norm = OpFactory::rms_norm(g, k_reshape, _weights.layers[i].attn_k_norm, _hparams.rms_norm_eps, "attn_k_norm_" + std::to_string(i));
+		
 		// q_norm k_norm  -->  rope  (TODO:这里可能性能会差，每次都要sin和cos计算，后续可以用空间换时间)
-		Tensor *q_rope = OpFactory::rope(g, q_reshape, inp_pos, rope_theta_table, "rope_q_" + std::to_string(i));
-		Tensor *k_rope = OpFactory::rope(g, k_reshape, inp_pos, rope_theta_table, "rope_k_" + std::to_string(i));
+		Tensor *q_rope = OpFactory::rope(g, q_norm, inp_pos, rope_theta_table, "rope_q_" + std::to_string(i));
+		Tensor *k_rope = OpFactory::rope(g, k_norm, inp_pos, rope_theta_table, "rope_k_" + std::to_string(i));
 
 		// TODO：kvcache暂时还为做
 
 		// SDPA / FlashAttention
-		cur = OpFactory::flash_attn(g, q_rope, k_rope, v, ap, "flash_attn_" + std::to_string(i));
+		cur = OpFactory::flash_attn(g, q_rope, k_rope, v_reshape, ap, "flash_attn_" + std::to_string(i));
 
-		//reshape，因为flash_attn自动处理了permute了，所以整个qwen3无需permute算子，只要reshape即可
-		cur = OpFactory::reshape(g, cur, {n_embd_head * n_head, n_tokens, 1}, "attn_reshape_" + std::to_string(i));
+		// reshape，因为flash_attn自动处理了permute了，所以整个qwen3无需permute算子，只要reshape即可
+		cur = OpFactory::reshape(g, cur, {n_embd_head_v * n_head, n_tokens, 1, 1}, "attn_reshape_" + std::to_string(i));
 
 		// Wo
 		cur = OpFactory::mul_mat(g, _weights.layers[i].wo, cur, "o_proj" + std::to_string(i));

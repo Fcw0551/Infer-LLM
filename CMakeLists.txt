@@ -15,6 +15,7 @@ option(INFERLLM_WITH_METAL "Build with Metal backend" OFF)
 # 核心库（src 下的所有 .cpp，除了 main.cpp）
 add_library(inferllm STATIC
     src/backends/cpu_backend.cpp
+    src/backends/cuda_backend.cpp
     src/models/Qwen3.cpp
     src/backend.cpp
     src/gguf_parser.cpp
@@ -22,6 +23,7 @@ add_library(inferllm STATIC
     src/log.cpp
     src/model.cpp
     src/op_factory.cpp
+    src/scheduler.cpp
     src/util.cpp
     
 )
@@ -62,5 +64,5 @@ add_executable(inferllm_main src/main.cpp)
 target_link_libraries(inferllm_main PRIVATE inferllm)
 
 # 测试程序
-add_executable(test_qwen3 test/test_qwen3_build_graph.cpp)
-target_link_libraries(test_qwen3 PRIVATE inferllm)
+# add_executable(test_qwen3 test/test_qwen3_build_graph.cpp)
+# target_link_libraries(test_qwen3 PRIVATE inferllm)

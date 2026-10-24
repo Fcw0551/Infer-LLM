@@ -30,7 +30,7 @@ public:
     }
 };
 
-// TODO gpu cuda CUDAPhysicalAllocator
+// TODO CUDAPhysicalAllocator
 
 
 
@@ -42,7 +42,7 @@ protected:
     PhysicalAllocator* _phys_allocator;
 public:
     explicit MemoryPool(PhysicalAllocator &allocator)
-    : _phys_allocator(allocator) 
+    : _phys_allocator(&allocator) 
     {}
 
     virtual ~MemoryPool() = default;

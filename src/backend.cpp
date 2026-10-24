@@ -41,14 +41,14 @@
         if (entry_it == _entries.end()){
             return std::unexpected(std::make_error_code(std::errc::no_such_device));
         }
-        return entry_it->second.create(device_id,dev_it,cfg);
+        return entry_it->second.create(device_id,*dev_it,cfg);  // 注意返回的dev_it是一个迭代器类型，要解引用
     }
     
     // 自动选择（优先 CUDA > Metal > CPU，可被环境变量覆盖）
     std::expected<std::unique_ptr<Backend>, std::error_code> BackendRegistry::create_default(const PoolConfig&cfg) const{
         // 环境变量
         if (const char* env = std::getenv("INFERLLM_DEVICE")) {
-            return create(env);   
+            return create(env,cfg);   
         }
         // 自动选择
         if (_devices.empty()){

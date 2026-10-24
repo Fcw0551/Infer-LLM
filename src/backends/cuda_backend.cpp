@@ -4,17 +4,36 @@
 
 std::vector<DeviceInfo> probe_cuda_devices() {
     std::vector<DeviceInfo> devices;
+
     int count = 0;
-    if (cudaGetDeviceCount(&count) != cudaSuccess)
+    if (cudaGetDeviceCount(&count) != cudaSuccess){
         return devices;
-    for (int i = 0; i < count; ++i)
-    {
-        cudaDeviceProp prop;
-        cudaGetDeviceProperties(&prop, i);
+    }
+
+    int previous_device = 0;
+    const bool restore_device = cudaGetDevice(&previous_device) == cudaSuccess;
+
+    for (int i = 0; i < count; ++i){
+        if (cudaSetDevice(i) != cudaSuccess){
+            continue;
+        }
+
+        size_t free_bytes = 0;
+        size_t total_bytes = 0;
+
+        if (cudaMemGetInfo(&free_bytes, &total_bytes) != cudaSuccess){
+            continue;
+        }
+
         devices.push_back({"cuda:" + std::to_string(i),
                            DeviceType::CUDA,
-                           prop.totalGlobalMem});
+                           free_bytes});
     }
+
+    if (restore_device){
+        cudaSetDevice(previous_device);
+    }
+
     return devices;
 }
 
@@ -34,9 +53,7 @@ void register_cuda_backend() {
 
 //-----cuda backend--------
 
-
-
-CUDABackend::alloc(size_t bytes) {
+std::expected<void *, std::error_code> CUDABackend::alloc(BufferKind kind, size_t bytes){
     // 之前探测过，bind 防止操作别的
     // 每次都要bind 子线程不会继承父线程
     cudaSetDevice(_device_id);
@@ -50,7 +67,7 @@ CUDABackend::alloc(size_t bytes) {
     return p;
 }
 
-void CUDABackend::free(void* ptr) {
+void CUDABackend::free(BufferKind kind,void* ptr) {
     if (!ptr) return;
     // 之前探测过，bind 防止操作别的
     cudaSetDevice(_device_id);
@@ -108,7 +125,7 @@ std::expected<void, std::error_code> CUDABackend::copy_tensor_get(const Tensor* 
 
 // 设备与设备之间可能要有高速，不需要经过cpu，如果这个方案不行，最后要退回cpu兜底
 //(optional) tensor copy: dst is in the buffer, src may be in any buffer, including buffers from a different backend (return false if not supported)
-bool copy_tensor_high(const Tensor *src, Tensor *dst) const;{
+std::expected<bool, std::error_code> CUDABackend::copy_tensor_high(const Tensor *src, Tensor *dst) const{
     //只有cuda不同设备（支持p2p）走NVLink(600GB/s) / PCIe (16-32GB)
     if (!src || !dst || !src->backend || !dst->backend)
         return false;
@@ -137,7 +154,7 @@ bool copy_tensor_high(const Tensor *src, Tensor *dst) const;{
             cudaGetLastError();
             return false;
         }
-        cudaStreamSynchronize(stream);
+        cudaStreamSynchronize(_stream);
         return true;
     }
 
@@ -147,8 +164,9 @@ bool copy_tensor_high(const Tensor *src, Tensor *dst) const;{
 
 
 // 执行 scheduler传子图给每个后端执行
-std::expected<void, std::error_code> CUDABackend::compute(Graph & subGraph) {
-
+std::expected<void, std::error_code> CUDABackend::compute(Graph & subGraph){
+    std::cout<<"还没做……"<<std::endl;
+    return {};
 }
 
 

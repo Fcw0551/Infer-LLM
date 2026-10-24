@@ -2,7 +2,7 @@
 #include "util.hpp"
 #include "gguf_parser.hpp"
 #include <string>
-
+#include <iostream>
 class Backend;  //前置声明
 
 //tensor算子的定义
@@ -35,11 +35,11 @@ struct Tensor{
     int layer;                                                                  //第几层
     int64_t offset;                                                             //数据在内存当中的偏移量（相对于gguf的数据区）
     void* data=nullptr;                                                         //实际指向的数据
-    std::array<int64_t,TENSOR_MAX_DIMS> dims{0,0,0,0};                          //维度
+    std::array<int64_t,TENSOR_MAX_DIMS> dims{1,1,1,1};                          //维度
     std::array<int64_t,TENSOR_MAX_DIMS> strides{0,0,0,0};                       //步长
     std::array<Tensor*,TENSOR_MAX_SRC> src{nullptr,nullptr,nullptr,nullptr};    //某个tensor由哪个tensor计算来
     int32_t op_params[OP_PARAMS_MAX * sizeof(int32_t)]={0};                     //算子需要的额外的参数 4*4=16字节
-    enum DataType dataType;                                                     //数据类型
+    enum DataType dataType=DataType::GGML_TYPE_F32;                             //数据类型
     enum TensorRole tensorRole=TensorRole::TENSOR_ROLE_NONE;                    //tensor是作为输入输出还是中间结点
     enum OperationType op = OperationType::GGML_OP_NONE;                        //算子类型
     enum DeviceType device=DeviceType::CPU;                                     //后端
@@ -48,14 +48,7 @@ struct Tensor{
     //---------------------辅助函数-------------------------
     // 计算元素数量
     size_t element_count() const{
-        size_t n = 1;
-        for (size_t i = 0; i < dims.size(); ++i){
-            if (dims[i] != 0)
-                n *= dims[i];
-            else
-                break;
-        }
-        return n;
+        return dims[0] * dims[1] * dims[2] * dims[3];
     }
     // 计算tensor大小
     size_t byte_size() const{
@@ -89,5 +82,12 @@ struct Tensor{
         default:
             return n * dataType_size(dataType);
         }
+    }
+    void print()
+    {
+        std::cerr << "name: " << name
+                  << "elements: " << element_count()
+                  << "dims"<<dims[0]<<" "<<dims[1]<<" "<<dims[2]<<" "<<dims[3]
+                  <<std::endl;
     }
 };

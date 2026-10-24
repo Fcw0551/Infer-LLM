@@ -94,18 +94,35 @@ void ThreadPool::parallel_for(int64_t n, const std::function<void(int64_t)>& fn)
 
 
 
-
-
+// ---------------cpu 注册模块-------------------
 // cpu 读取total_ram
 size_t get_total_memory() {
     long pages = sysconf(_SC_PHYS_PAGES);
     long page_size = sysconf(_SC_PAGE_SIZE);
     return pages * page_size;
 }
+// cpu读取available_ram
+size_t get_available_memory() {
+    std::ifstream file("/proc/meminfo");
+    std::string line;
+
+    while (std::getline(file, line)) {
+        std::istringstream input(line);
+        std::string key;
+        size_t value_kib = 0;
+
+        if (input >> key >> value_kib &&
+            key == "MemAvailable:") {
+            return value_kib * 1024;
+        }
+    }
+
+    return 0; // 查询失败，不把未知容量当成可用容量
+}
 //cpu 后端的注册函数
 void register_cpu_backend(){
     BackendRegistry::instance().register_backend("cpu",
-    []()->std::vector<DeviceInfo> { return {DeviceInfo{"cpu", DeviceType::CPU, get_total_memory()}}; },   // probe
+    []()->std::vector<DeviceInfo> { return {DeviceInfo{"cpu", DeviceType::CPU, get_available_memory()}}; },   // probe
     [](int device_id,DeviceInfo info, const PoolConfig& cfg)->std::unique_ptr<Backend> { return std::make_unique<CPUBackend>(device_id,std::move(info),cfg); } // create
     );
 }
@@ -114,19 +131,19 @@ void register_cpu_backend(){
 // CPUBackend
 // 跨设备传输  copy结点
 // 从 host 的内存数据 写入这个 tensor 所在的设备的buffer
-std::expected<void, std::error_code> CPUBackend::copy_tenosr_set(Tensor *tensor, const void *data, size_t offset, size_t size) {
+std::expected<void, std::error_code> CPUBackend::copy_tensor_set(Tensor *tensor, const void *data, size_t offset, size_t size) {
     assert(tensor->device==DeviceType::CPU);
     if(data==nullptr){
         return std::unexpected(std::make_error_code(std::errc::invalid_argument));
     }
-    if (offset + bytes > tensor->byte_size()) {
+    if (offset + size > tensor->byte_size()) {
         return std::unexpected(std::make_error_code(std::errc::invalid_argument));
     }
     std::memcpy(static_cast<char*>(tensor->data) + offset, data, size);
     return {};
 }
 // 从这个 tensor 所在的设备 buffer，读数据到 host 内存。
-std::expected<void, std::error_code> CPUBackend::copy_tenosr_get(const Tensor *tensor, void *data, size_t offset, size_t size) {
+std::expected<void, std::error_code> CPUBackend::copy_tensor_get(const Tensor *tensor, void *data, size_t offset, size_t size) {
     assert(tensor->device==DeviceType::CPU);
 
     if (data == nullptr){
@@ -135,11 +152,11 @@ std::expected<void, std::error_code> CPUBackend::copy_tenosr_get(const Tensor *t
     if (tensor->data == nullptr) {
         return std::unexpected(std::make_error_code(std::errc::invalid_argument));
     }
-    if (offset + bytes > tensor->byte_size()){
+    if (offset + size > tensor->byte_size()){
         return std::unexpected(std::make_error_code(std::errc::invalid_argument));
     }
 
-    std::memcpy(data, static_cast<const char *>(tensor->data) + offset, bytes);
+    std::memcpy(data, static_cast<const char *>(tensor->data) + offset, size);
     return {};
 }
 
@@ -201,23 +218,27 @@ std::expected<void, std::error_code> CPUBackend::compute(Graph &graph){
 
 std::expected<void, std::error_code> CPUBackend::dispatch(Tensor* node) {
     switch (node->op) {
-    case OperationType::GGML_OP_ADD:            return compute_add(*node);
-    case OperationType::GGML_OP_MUL:            return compute_mul(*node);
+    case OperationType::GGML_OP_ADD:            return compute_add(node);
+    case OperationType::GGML_OP_MUL:            return compute_mul(node);
     case OperationType::GGML_OP_UNARY:
         {
             uint32_t op;
             std::memcpy(&op,&node->op_params[0],4);
             
             switch(static_cast<OperationType_unary_op>(op)){
-                case OperationType_unary_op::GGML_UNARY_OP_SILU:    return compute_unary_silu(*node);
+            case OperationType_unary_op::GGML_UNARY_OP_SILU:
+                return compute_silu(node);
+            default:
+                return std::unexpected(
+                    std::make_error_code(std::errc::not_supported));
             }
            
         }
-    case OperationType::GGML_OP_RMS_NORM:       return compute_rms_norm(*node);
-    case OperationType::GGML_OP_GET_ROWS:       return compute_get_rows(*node);
-    case OperationType::GGML_OP_MUL_MAT:        return compute_mul_mat(*node);
-    case OperationType::GGML_OP_ROPE:           return compute_rope(*node);
-    case OperationType::GGML_OP_FLASH_ATTN_EXT: return compute_flash_attn(*node);
+    case OperationType::GGML_OP_RMS_NORM:       return compute_rms_norm(node);
+    case OperationType::GGML_OP_GET_ROWS:       return compute_get_rows(node);
+    case OperationType::GGML_OP_MUL_MAT:        return compute_mul_mat(node);
+    case OperationType::GGML_OP_ROPE:           return compute_rope(node);
+    case OperationType::GGML_OP_FLASH_ATTN_EXT: return compute_flash_attn(node);
 
     case OperationType::GGML_OP_NONE:
         return {};   // 叶子，跳过
@@ -235,8 +256,10 @@ std::expected<void, std::error_code> CPUBackend::compute_get_rows(Tensor* dst){
 
     // 这个算子的本质是一个gather，一个索引+一个表
     // 索引去替换表的第二维就是结果
-    Tensor* table= node->src[0];
-    Tensor* indices= node->src[1];
+    Tensor* src0= dst->src[0];
+    Tensor* src1= dst->src[1];
+    INFERLLM_TENSOR_BINARY_LOCALS              //宏展开
+
     assert(src0&&src1);
     assert(src0->dims[0]==dst->dims[0]);
     assert(src1->dims[0]==dst->dims[1]);
@@ -273,10 +296,10 @@ std::expected<void, std::error_code> CPUBackend::compute_get_rows(Tensor* dst){
     // const int64_t nc=table->dims[0];       //每行多少元素
     // const int64_t n_idx=indices->dims[0]; //索引的个数
 
-    INFERLLM_TENSOR_BINARY_LOCALS              //宏展开
+   
     
-    const char *table_base = static_cast<const char *>(table->data);
-    const char *indices_base = static_cast<const char *>(indices->data);
+    const char *table_base = static_cast<const char *>(src0->data);
+    const char *indices_base = static_cast<const char *>(src1->data);
     char *dst_base = static_cast<char *>(dst->data);
 
     const int64_t nr=dims10*dims11*dims12;  //要遍历多少行
@@ -298,7 +321,7 @@ std::expected<void, std::error_code> CPUBackend::compute_get_rows(Tensor* dst){
         char *dst = dst_base + i10 * strides1 + i11 * strides2 + i12 * strides3;
 
         // 拷贝整行
-        std::memcpy(dst, src, nc * sizeof(float)); }
+        std::memcpy(dst, src, dims00 * sizeof(float)); }
     );
     return {};
 }
@@ -332,9 +355,9 @@ std::expected<void, std::error_code> CPUBackend::compute_rms_norm(Tensor* dst){
     _threadPool.parallel_for(dims01, [&](int64_t i)
                             {
                                  // 求平方和  [n_embd , i]
-                                const float* start=static_cast<const float *>(x_base+i*strides1);
-                                const float* weight=static_cast<const float *>(weight_base);
-                                float* dst=static_cast<float *>(dst_base+i*strides1);
+                                const float* start=reinterpret_cast<const float *>(x_base+i*strides1);
+                                const float* weight=reinterpret_cast<const float *>(weight_base);
+                                float* dst=reinterpret_cast<float *>(dst_base+i*strides1);
 
                                 double sum=0;           // TODO 这里用int 还是double 有没有考量呢
 
@@ -353,7 +376,7 @@ std::expected<void, std::error_code> CPUBackend::compute_rms_norm(Tensor* dst){
 
 
 
-std::expected<void, std::error_code> compute_mul_mat(Tensor* dst){
+std::expected<void, std::error_code> CPUBackend::compute_mul_mat(Tensor* dst){
     //w     : [n_embd, n_out]
     //x     : [n_embd, n_tokens] 
     //out   : [n_out, n_tokens]
@@ -366,8 +389,8 @@ std::expected<void, std::error_code> compute_mul_mat(Tensor* dst){
     INFERLLM_TENSOR_BINARY_LOCALS
 
     assert(dims00 == dims10);
-    assert(dst->ne[0] == dims01);
-    assert(dst->ne[1] == dims11);
+    assert(dst->strides[0] == dims01);
+    assert(dst->strides[1] == dims11);
     const float *x_base = static_cast<const float *>(src1->data);
     const float *w_base = static_cast<const float *>(src0->data);
     float *dst_base = static_cast<float *>(dst->data);
@@ -425,7 +448,7 @@ std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
 
         const int64_t position = pos_base[token];       //获取当前token的实际位置
 
-        const float* angle_table=angle_table_base[position*dim02];    //从angel表的哪里开始
+        const float* angle_table=angle_table_base + position * dims20;    //从angel表的哪里开始
 
         for (int64_t j = 0; j < n_pairs; ++j){
 
@@ -447,20 +470,20 @@ std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
         const int64_t offset = i * dims00;              //元素的个数
         const int64_t trig_offset = token * n_pairs;
         
-        const float *start = x_base + offset;
+        const float *start = w_base + offset;
         float *dst = dst_base + offset;
         
         const float *sin_head = sin_cache.data() + trig_offset;
         const float *cos_head = cos_cache.data() + trig_offset;
 
-        for (int64_t j = 0; j < n_pair ; ++j){
+        for (int64_t j = 0; j < n_pairs ; ++j){
             // 已经缓存好的sin cos
             const float x0 = start[2 * j];
             const float x1 = start[2 * j + 1];
             const float c = cos_head[j];
             const float s = sin_head[j];
-            y_head[2 * j] = x0 * c - x1 * s;
-            y_head[2 * j + 1] = x0 * s + x1 * c;
+            dst[2 * j] = x0 * c - x1 * s;
+            dst[2 * j + 1] = x0 * s + x1 * c;
         }
     });
     return {};
@@ -515,7 +538,7 @@ std::expected<void, std::error_code> CPUBackend::compute_flash_attn(Tensor* dst)
             // mask : 只允许访问当前位置之前的token
             if (key_token > q_token){
                 //当前 Query 正在和第几个 Key token 计算注意力分数
-                scores[k] = -std::numeric_limits<float>::infinity();
+                scores[key_token] = -std::numeric_limits<float>::infinity();
                 continue;
             }
             const int64_t kv_offset = (key_token * dims11 + kv_head) * dims00;      //计算偏移，因为我们算的是s的一行*整个kv矩阵，所以这里的kv_offset是每次循环会跳跃的，比如token0的head1，token1的head1 token2的head1
