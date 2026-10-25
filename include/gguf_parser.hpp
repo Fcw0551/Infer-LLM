@@ -34,11 +34,11 @@ struct TensorInfo {
         return {_dims.data(), _n_dims};
     }
 
-    std::string _name;                              // 如 "blk.0.attn_q.weight"
-    uint32_t    _n_dims;                            // 维度数，1~4
-    std::array<int64_t, GGUF_MAX_DIMS> _dims{};       // 维度大小
-    DataType    _type;                               // 数据类型
-    uint64_t    _offset;                             // 相对于数据区起始的字节偏移
+    std::string _name;                                  // 如 "blk.0.attn_q.weight"
+    uint32_t    _n_dims;                                // 维度数，1~4
+    std::array<int64_t, GGUF_MAX_DIMS> _dims{1,1,1,1};  // 维度大小
+    DataType    _type;                                  // 数据类型
+    uint64_t    _offset;                                // 相对于数据区起始的字节偏移
 };
 
 //kv元信息
