@@ -35,7 +35,7 @@ Tensor *OpFactory::sub(Graph &g, Tensor *a, Tensor *b, std::string_view name){
     assert(a->dataType == b->dataType);
 
     Tensor *result = create_tensor(g, name, a->dataType, {a->dims[0], a->dims[1], a->dims[2], a->dims[3]});
-    result->op = OperationType::GGML_OP_MUL;
+    result->op = OperationType::GGML_OP_SUB;
     result->src[0] = a;
     result->src[1] = b;
     return result;
@@ -63,7 +63,7 @@ Tensor *OpFactory::div(Graph &g, Tensor *a, Tensor *b, std::string_view name){
     assert(a->dataType == b->dataType);
 
     Tensor *result = create_tensor(g, name, a->dataType, {a->dims[0], a->dims[1], a->dims[2], a->dims[3]});
-    result->op = OperationType::GGML_OP_MUL;
+    result->op = OperationType::GGML_OP_DIV;
     result->src[0] = a;
     result->src[1] = b;
     return result;
@@ -142,7 +142,7 @@ Tensor *OpFactory::flash_attn(Graph &g, Tensor *q, Tensor *k, Tensor *v, const A
     // q[n_embd,n_tokens]
     // k[n_embd,n_tokens]
     // v[n_embd,n_tokens]
-    Tensor *result = create_tensor(g, name, q->dataType, {q->dims[0], q->dims[1],q->dims[2], q->dims[3]});
+    Tensor *result = create_tensor(g, name, q->dataType, {v->dims[0], q->dims[1],q->dims[2], q->dims[3]});
     result->op = OperationType::GGML_OP_FLASH_ATTN_EXT;
     result->src[0] = q;
     result->src[1] = k;
