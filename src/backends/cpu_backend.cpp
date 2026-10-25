@@ -237,6 +237,7 @@ std::expected<void, std::error_code> CPUBackend::dispatch(Tensor* node) {
     case OperationType::GGML_OP_RMS_NORM:       return compute_rms_norm(node);
     case OperationType::GGML_OP_GET_ROWS:       return compute_get_rows(node);
     case OperationType::GGML_OP_MUL_MAT:        return compute_mul_mat(node);
+    case OperationType::GGML_OP_RESHAPE:        return compute_reshape(node);
     case OperationType::GGML_OP_ROPE:           return compute_rope(node);
     case OperationType::GGML_OP_FLASH_ATTN_EXT: return compute_flash_attn(node);
 
@@ -314,10 +315,10 @@ std::expected<void, std::error_code> CPUBackend::compute_get_rows(Tensor* dst){
         // 从 indices 读索引值 解引用四个字节
         int32_t id = *reinterpret_cast<const int32_t *>(indices_base + i10 * strides10 + i11 * strides11 + i12 * strides12);
 
-        // 源地址：table 的 (id, i11, i12)
+        // 源地址：table 的 (id, i11, i12) （这里的i11和i12的做法是可能不同的请求到内部的不同的table，table可能有的模型有多张）
         const char *src = table_base + id * strides01 + i11 * strides02 + i12 * strides03;  
 
-        // 目标地址：输出的 (i10, i11, i12)
+        // 目标地址：输出的 (i10, i11, i12) （i11和i12的解释和上述一样）
         char *dst = dst_base + i10 * strides1 + i11 * strides2 + i12 * strides3;
 
         // 拷贝整行
@@ -329,7 +330,8 @@ std::expected<void, std::error_code> CPUBackend::compute_get_rows(Tensor* dst){
 
 std::expected<void, std::error_code> CPUBackend::compute_rms_norm(Tensor* dst){
     // x            : [n_embd , n_tokens]
-    // weight       : [n_embd,1,1,1]
+    // x            : [n_head_embd,head,n_tokens,batch]   //有可能是拆分多头的，但是都是统一沿着第一维度去做rms_norm的
+    // weight       : [n_embd,1,1,1]        // gamma γ
     // rms_norm_i   : [n_embd , n_tokens]
 
     Tensor* src0 = dst->src[0];
@@ -352,10 +354,11 @@ std::expected<void, std::error_code> CPUBackend::compute_rms_norm(Tensor* dst){
     //      还有关于SIMD向量化的优化可以后期考虑
 
     // 两次的for循环是必然的 rms比layer少一次for
-    _threadPool.parallel_for(dims01, [&](int64_t i)
+    _threadPool.parallel_for(dims01*dims02*dims03, [&](int64_t i)
                             {
-                                 // 求平方和  [n_embd , i]
-                                const float* start=reinterpret_cast<const float *>(x_base+i*strides1);
+                                // 求平方和  [n_embd , i]
+                                // todo：因为多头的时候内存还是连续的，所以以下不会有问题，但是当rms_norm接收的src不连续的时候就要考虑了
+                                const float* start=reinterpret_cast<const float *>(x_base+i*strides01);
                                 const float* weight=reinterpret_cast<const float *>(weight_base);
                                 float* dst=reinterpret_cast<float *>(dst_base+i*strides1);
 
@@ -389,8 +392,8 @@ std::expected<void, std::error_code> CPUBackend::compute_mul_mat(Tensor* dst){
     INFERLLM_TENSOR_BINARY_LOCALS
 
     assert(dims00 == dims10);
-    assert(dst->strides[0] == dims01);
-    assert(dst->strides[1] == dims11);
+    assert(dims0 == dims01);
+    assert(dims1 == dims11);
     const float *x_base = static_cast<const float *>(src1->data);
     const float *w_base = static_cast<const float *>(src0->data);
     float *dst_base = static_cast<float *>(dst->data);
@@ -416,13 +419,33 @@ std::expected<void, std::error_code> CPUBackend::compute_mul_mat(Tensor* dst){
     return {};
 }
 
+// todo:由于当前的图scheduler会给每一个activation分内存，所以这里拷贝，需要sheduler分配的时候跳过，并且要有视图
+std::expected<void, std::error_code> CPUBackend::compute_reshape(Tensor *dst){
+    Tensor *src = dst->src[0];
+
+    if (!src || !src->data || !dst->data ||
+        src->dataType != dst->dataType ||
+        src->element_count() != dst->element_count()){
+        return std::unexpected(
+            std::make_error_code(std::errc::invalid_argument));
+    }
+
+    // 前提：输入、输出都是连续布局
+    if (dst->data != src->data){
+        std::memcpy(dst->data, src->data, src->byte_size());
+    }
+
+    return {};
+}
+
+
 std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
     Tensor *src0 = dst->src[0];             // x  （q/k）
     Tensor *src1 = dst->src[1];            // inp_pos
     Tensor *src2 = dst->src[2];            // theta表（旋转角度表）
     INFERLLM_TENSOR_TERNARY_LOCALS
 
-    infer_are_same_shape(src2,dst);
+    infer_are_same_shape(src0,dst);
 
     // src0 (Q/K)   :  [head_dim, n_heads, n_tokens]
     // src1 (pos)   :  [n_tokens]
@@ -436,7 +459,8 @@ std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
     // dst[2j+1] =X[2j]*s + X[2j+1]*c
     
     const float *w_base = static_cast<const float *>(src0->data);
-    const float *pos_base = static_cast<const float *>(src1->data);
+    //const float *pos_base = static_cast<const float *>(src1->data);   //本身位置是int32_t 如果用float去读取，可能导致原来pos为1，但变为0
+    const int32_t* pos_base=static_cast<const int32_t*>(src1->data);
     const float *angle_table_base = static_cast<const float *>(src2->data);
     float *dst_base = static_cast<float *>(dst->data);
 
@@ -465,7 +489,7 @@ std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
         // 一个任务按照一个头去划分
 
         // 计算是第几个token
-        const int64_t token = i / dims01;
+        const int64_t token = i / dims01;               // todo:多批次的dim03不为1的可能会出错，先这样，后期再改
         // 计算 从哪里开始取数  从哪里开始放
         const int64_t offset = i * dims00;              //元素的个数
         const int64_t trig_offset = token * n_pairs;
@@ -477,23 +501,31 @@ std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
         const float *cos_head = cos_cache.data() + trig_offset;
 
         for (int64_t j = 0; j < n_pairs ; ++j){
-            // 已经缓存好的sin cos
-            const float x0 = start[2 * j];
-            const float x1 = start[2 * j + 1];
+            // // 已经缓存好的sin cos
+            // const float x0 = start[2 * j];
+            // const float x1 = start[2 * j + 1];
+            // const float c = cos_head[j];
+            // const float s = sin_head[j];
+            // dst[2 * j] = x0 * c - x1 * s;
+            // dst[2 * j + 1] = x0 * s + x1 * c;
+
+            // qwen3是使用前半部分的每个元素，和后半部分相同相对位置的元素配对（TODO，先适配qwen3跑起来先）
+            const float x0 = start[j];
+            const float x1 = start[n_pairs + j];
             const float c = cos_head[j];
             const float s = sin_head[j];
-            dst[2 * j] = x0 * c - x1 * s;
-            dst[2 * j + 1] = x0 * s + x1 * c;
+            dst[j] = x0 * c - x1 * s;
+            dst[n_pairs + j] = x0 * s + x1 * c;
         }
     });
     return {};
 }
 
 std::expected<void, std::error_code> CPUBackend::compute_flash_attn(Tensor* dst){
-    // q[head_dim, n_heads,n_tokens_q]
-    // k[head_dim, n_heads_kv,n_tokens_kv]
-    // v[head_dim, n_heads_kv,n_tokens_kv]
-    // O[head_dim, n_heads,n_tokens_q]
+    // q[head_dim, n_heads_k,n_tokens_q]
+    // k[head_dim, n_heads_k,n_tokens_kv]
+    // v[head_dim, n_heads_v,n_tokens_kv]
+    // dst[head_dim, n_heads_k,n_tokens_q]
 
     
     //llama.cpp为了适配mul_mat接口采用permute 
@@ -526,22 +558,23 @@ std::expected<void, std::error_code> CPUBackend::compute_flash_attn(Tensor* dst)
         const float *q_start = q_base + q_offset;                           // q找到起始位置
         
         
-        float *dst_start = dst_base + q_offset;                             // dst找到位置
+        float *dst_start = dst_base + i * dims20;                             // dst找到位置
 
         //对应位置相乘相加，然后放到指定位置即可
         
         // QK^T / sqrt(D)
         // 当前 Query 对所有 Key 的 Attention Score
         std::vector<float> scores(dims12);          //dims12=Nk
-        float scale=std::sqrt(dims00);              // sqrt(D)
-        for (int64_t key_token = 0; key_token < dims02; ++key_token){
+        float scale=1.0f/std::sqrt(static_cast<float>(dims00));              // sqrt(D)
+        for (int64_t key_token = 0; key_token < dims12; ++key_token){       
             // mask : 只允许访问当前位置之前的token
-            if (key_token > q_token){
+            if (key_token > q_token){   // TODO:因为还没有接入kvcache，所以暂时都是一次性推理
                 //当前 Query 正在和第几个 Key token 计算注意力分数
                 scores[key_token] = -std::numeric_limits<float>::infinity();
                 continue;
             }
-            const int64_t kv_offset = (key_token * dims11 + kv_head) * dims00;      //计算偏移，因为我们算的是s的一行*整个kv矩阵，所以这里的kv_offset是每次循环会跳跃的，比如token0的head1，token1的head1 token2的head1
+            // 计算不同token的相同头
+            const int64_t kv_offset = (key_token * dims11 + kv_head) * dims10;      //计算偏移，因为我们算的是s的一行*整个kv矩阵，所以这里的kv_offset是每次循环会跳跃的，比如token0的head1，token1的head1 token2的head1
 
             const float *k_start = k_base + kv_offset;
 
@@ -573,10 +606,10 @@ std::expected<void, std::error_code> CPUBackend::compute_flash_attn(Tensor* dst)
         // }
         
         // 当前任务的输出是一个 D 维向量
-        std::fill(dst_start, dst_start + dims00, 0.0f);
+        std::fill(dst_start, dst_start + dims20, 0.0f);
 
         // 遍历 V 的每一行，即不同 Key token 的 V 向量
-        for (int64_t key_token = 0; key_token < dims12; ++key_token){
+        for (int64_t key_token = 0; key_token < dims22; ++key_token){
 
             const int64_t kv_offset = (key_token * dims21 + kv_head) * dims20;
 
