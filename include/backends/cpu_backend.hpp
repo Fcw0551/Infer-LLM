@@ -159,6 +159,7 @@ private:
     std::expected<void, std::error_code> compute_get_rows(Tensor* dst);
     std::expected<void, std::error_code> compute_rms_norm(Tensor* dst);
     std::expected<void, std::error_code> compute_mul_mat(Tensor* dst);
+    std::expected<void, std::error_code> compute_reshape(Tensor* dst);
     std::expected<void, std::error_code> compute_rope(Tensor* dst);
     std::expected<void, std::error_code> compute_flash_attn(Tensor* dst);
     std::expected<void, std::error_code> compute_add(Tensor* dst);

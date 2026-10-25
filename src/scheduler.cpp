@@ -312,8 +312,14 @@ std::expected<void, std::error_code> Scheduler::copy_tensor(Tensor *src, Tensor 
     }
 
     // 高速路径：由 dst 设备判断能不能不用 host 直接搬
-    if (dst->backend->copy_tensor_high(src, dst)) {
-        return {};
+    auto result=dst->backend->copy_tensor_high(src, dst);
+    if (!result) {
+        return std::unexpected(result.error());
+    }
+    else{
+        if(*result){
+            return {};
+        }
     }
 
     // 兜底：src 设备 -> host -> dst 设备
