@@ -100,7 +100,7 @@ protected:
     std::vector<Arena> _weight_arenas;                 // 权重申请和释放的管理
 public:
     ModelBase(GGUFContext&& gguf) : _gguf(std::move(gguf)) {}
-    ~ModelBase();
+    virtual ~ModelBase();
     //加载
     static std::expected<std::unique_ptr<ModelBase>, std::error_code> load_model(GGUFContext&& gguf);
     //加载超参数->整体架构
