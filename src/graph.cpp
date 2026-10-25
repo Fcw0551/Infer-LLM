@@ -1,5 +1,5 @@
-#pragma once
 #include "../include/graph.hpp"
+#include <new>
 //------Graph--------
 
 // 构建 API
@@ -99,10 +99,13 @@ std::expected<Tensor *, std::error_code> GraphContext::get_rope_theta_table(floa
     Tensor *t = make_tensor("rope_theta",DataType::GGML_TYPE_F32, {half, n_ctx, 1, 1});
 
     // 分配 data 纯数据块
-    t->data = std::malloc(half * n_ctx * sizeof(float));
-    if (t->data == nullptr){
+    auto buffer = std::unique_ptr<float[]>(
+        new (std::nothrow) float[static_cast<size_t>(half) * n_ctx]);
+    if (!buffer){
         return std::unexpected(std::make_error_code(std::errc::not_enough_memory));
     }
+    t->data = buffer.get();
+    _rope_buffers.push_back(std::move(buffer));
     float *data = static_cast<float *>(t->data);
 
     // 先算 freq_i（只有 half 个不同的值，两两一组，多头共用）
