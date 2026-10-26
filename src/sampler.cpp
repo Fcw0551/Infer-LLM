@@ -37,10 +37,9 @@ std::expected<std::vector<float>, std::error_code> read_logits(const Tensor& ten
 
 
 // ----------------- sampler -------------------
-std::expected<int32_t, std::error_code> Sampler::sample(std::span<const float> logits) const {
-    if (_config.mode != SamplingMode::Greedy) {
-        return std::unexpected(std::make_error_code(std::errc::not_supported));
-    }
+namespace {
+
+std::expected<int32_t, std::error_code> sample_greedy(std::span<const float> logits) {
     if (logits.empty()) {
         return std::unexpected(std::make_error_code(std::errc::invalid_argument));
     }
@@ -63,4 +62,16 @@ std::expected<int32_t, std::error_code> Sampler::sample(std::span<const float> l
         return std::unexpected(std::make_error_code(std::errc::invalid_argument));
     }
     return best_id;
+}
+
+} // namespace
+
+std::expected<int32_t, std::error_code> Sampler::sample(std::span<const float> logits) const {
+    switch (_config.mode) {
+    case SamplingMode::Greedy:
+        return sample_greedy(logits);
+    }
+
+    // 不设置 default，让编译器提示新增但尚未处理的枚举策略。
+    return std::unexpected(std::make_error_code(std::errc::not_supported));
 }
