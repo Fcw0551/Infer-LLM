@@ -121,4 +121,6 @@ private:
     // 所有权池
     // 所有 GraphContext 创建的张量放这里，析构时统一释放
     std::vector<std::unique_ptr<Tensor>> _owned;
+    // RoPE 数据由 context 拥有，输入 Tensor 的 data 仍然借用调用者内存
+    std::vector<std::unique_ptr<float[]>> _rope_buffers;
 };
