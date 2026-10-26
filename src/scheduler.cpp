@@ -385,7 +385,7 @@ std::expected<void, std::error_code> Scheduler::alloc_graph(Graph &g){
         if (it->second < bytes){
             return std::unexpected(std::make_error_code(std::errc::not_enough_memory));
         }
-        auto p = t->backend->alloc(BufferKind::ACTIVATION,bytes);
+        auto p = t->backend->alloc(BufferKind::ACTIVATION,bytes);       // todo alloc出来的内存，没有管理导致内存泄漏，后续会处理
         if (!p){
             return std::unexpected(p.error());
         }
