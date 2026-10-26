@@ -23,6 +23,7 @@ add_library(inferllm STATIC
     src/log.cpp
     src/model.cpp
     src/op_factory.cpp
+    src/sampler.cpp
     src/scheduler.cpp
     src/util.cpp
     
