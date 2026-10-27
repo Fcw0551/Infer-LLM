@@ -26,11 +26,21 @@ add_library(inferllm STATIC
     src/sampler.cpp
     src/scheduler.cpp
     src/util.cpp
+    src/tokenizer/tokenizer.cpp
+    src/tokenizer/tokenizer_gguf.cpp
+    src/tokenizer/tokenizer_pre.cpp
+    src/tokenizer/tokenizer_bpe.cpp
     
 )
 
 target_include_directories(inferllm PUBLIC include)
 target_compile_options(inferllm PRIVATE -Wall -Wextra)
+
+find_path(PCRE2_INCLUDE_DIR pcre2.h REQUIRED)
+find_library(PCRE2_LIBRARY NAMES pcre2-8 REQUIRED)
+find_package(ICU REQUIRED COMPONENTS uc)
+target_include_directories(inferllm PRIVATE ${PCRE2_INCLUDE_DIR})
+target_link_libraries(inferllm PRIVATE ${PCRE2_LIBRARY} ICU::uc)
 
 
 if(INFERLLM_WITH_CUDA)
