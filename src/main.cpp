@@ -6,6 +6,7 @@
 #include<../include/graph.hpp>
 #include <../include/scheduler.hpp>
 #include "sampler.hpp"
+#include "tokenizer.hpp"
 #include <charconv>
 #include <limits>
 #include <numeric>
@@ -109,6 +110,11 @@ int main(int argc, char** argv){
         }
         eos_token = static_cast<int32_t>(*eos);
     }
+    auto tokenizer = Tokenizer::from_gguf(gguf->metadata());
+    if (!tokenizer) {
+        std::cerr << "加载 tokenizer 失败：" << tokenizer.error().message() << '\n';
+        return 1;
+    }
     // -------------加载模型--------------
     register_all_models();
     // -------------传ggufcontext给modelbase，进而实例化出模型----------------
@@ -144,8 +150,23 @@ int main(int argc, char** argv){
         return 1;
     }
 
-    // ------------沿用现有测试输入；尚未接 tokenizer，因此这里只展示 token ID--------------
-    std::vector<int32_t> token_ids{151643, 100, 200, 300};
+    // ------------将 prompt 编码为输入 token ID--------------
+    // Qwen3 单轮对话模板，使用空思考块关闭思考模式。
+    const std::string_view prompt =
+        "<|im_start|>user\n"
+        "介绍一下你自己<|im_end|>\n"
+        "<|im_start|>assistant\n"
+        "<think>\n\n</think>\n\n";
+    auto encoded = tokenizer->encode(prompt, {.parse_special = true});
+    if (!encoded) {
+        std::cerr << "prompt 编码失败：" << encoded.error().message() << '\n';
+        return 1;
+    }
+    if (encoded->empty()) {
+        std::cerr << "prompt 编码结果不能为空\n";
+        return 1;
+    }
+    std::vector<int32_t> token_ids = std::move(*encoded);
     for (int32_t id : token_ids) {
         if (id < 0 || static_cast<uint64_t>(id) >= *vocab_size) {
             std::cerr << "输入 token ID 超出词表\n";
@@ -236,6 +257,12 @@ int main(int argc, char** argv){
     std::cout << "生成的 token IDs：";
     for (int32_t id : generated) std::cout << ' ' << id;
     std::cout << '\n';
+    auto text = tokenizer->decode(generated);
+    if (!text) {
+        std::cerr << "生成结果解码失败：" << text.error().message() << '\n';
+        return 1;
+    }
+    std::cout << "生成的文字：" << *text << '\n';
     return 0;
 
 }
