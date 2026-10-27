@@ -84,6 +84,9 @@ public:
     }
     
 
+    // 获取当前线程数量
+    int get_n_threads() const noexcept { return _n_threads; }
+    
     // 设置线程数量
     void set_n_threads(size_t n){
         _n_threads=n;
