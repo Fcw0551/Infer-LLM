@@ -21,3 +21,6 @@ test/
 
 #dot图
 *.dot
+
+#bench
+benchmarks
