@@ -29,7 +29,9 @@ public:
     void mark_output(Tensor* t){
         _outputs.push_back(t);
     }
-
+    void clear(){
+        _nodes.clear();
+    }
     // 执行 建图
     std::expected<void, std::error_code> compute();
     //std::expected<void, std::error_code> compute(Device& backend);
