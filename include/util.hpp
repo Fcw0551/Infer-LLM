@@ -78,6 +78,7 @@ enum class TensorRole:uint8_t{
     TENSOR_ROLE_WEIGHT     = 1 << 2,    //权重
     TENSOR_ROLE_ACTIVATION = 1 << 3,    //计算结果中间产生的
     TENSOR_ROLE_VIEW       = 1 << 4,    //视图
+    TENSOR_ROLE_KVCACHE    = 1 << 5,    //kvcache
 };
 
 //算子类型
