@@ -22,6 +22,7 @@ Tensor *OpFactory::add(Graph &g, Tensor *a, Tensor *b, std::string_view name){
 
     Tensor *result = create_tensor(g, name, a->dataType, {a->dims[0], a->dims[1], a->dims[2], a->dims[3]});
     result->op = OperationType::GGML_OP_ADD;
+    result->tensorRole = TensorRole::TENSOR_ROLE_ACTIVATION;
     result->src[0] = a;
     result->src[1] = b;
     return result;
@@ -36,6 +37,7 @@ Tensor *OpFactory::sub(Graph &g, Tensor *a, Tensor *b, std::string_view name){
 
     Tensor *result = create_tensor(g, name, a->dataType, {a->dims[0], a->dims[1], a->dims[2], a->dims[3]});
     result->op = OperationType::GGML_OP_SUB;
+    result->tensorRole = TensorRole::TENSOR_ROLE_ACTIVATION;
     result->src[0] = a;
     result->src[1] = b;
     return result;
@@ -50,6 +52,7 @@ Tensor *OpFactory::mul(Graph &g, Tensor *a, Tensor *b, std::string_view name){
 
     Tensor *result = create_tensor(g, name, a->dataType, {a->dims[0], a->dims[1], a->dims[2], a->dims[3]});
     result->op = OperationType::GGML_OP_MUL;
+    result->tensorRole = TensorRole::TENSOR_ROLE_ACTIVATION;
     result->src[0] = a;
     result->src[1] = b;
     return result;
@@ -64,6 +67,7 @@ Tensor *OpFactory::div(Graph &g, Tensor *a, Tensor *b, std::string_view name){
 
     Tensor *result = create_tensor(g, name, a->dataType, {a->dims[0], a->dims[1], a->dims[2], a->dims[3]});
     result->op = OperationType::GGML_OP_DIV;
+    result->tensorRole = TensorRole::TENSOR_ROLE_ACTIVATION;
     result->src[0] = a;
     result->src[1] = b;
     return result;
@@ -82,6 +86,7 @@ Tensor *OpFactory::embedding(Graph &g,Tensor *token_embd,Tensor *input_token){
     // src1 ： 索引
     Tensor *result = create_tensor(g, "embedding", token_embd->dataType, {n_embd, n_tokens});
     result->op = OperationType::GGML_OP_GET_ROWS;
+    result->tensorRole = TensorRole::TENSOR_ROLE_ACTIVATION;
     result->src[0] = token_embd;
     result->src[1] = input_token;
     return result;
@@ -94,6 +99,7 @@ Tensor *OpFactory::mul_mat(Graph &g, Tensor *w, Tensor *x, std::string_view name
     uint64_t n_tokens = x->dims[1];
     Tensor *result = create_tensor(g, name, x->dataType, {n_out, n_tokens});
     result->op = OperationType::GGML_OP_MUL_MAT;
+    result->tensorRole = TensorRole::TENSOR_ROLE_ACTIVATION;
     result->src[0] = w;
     result->src[1] = x;
     return result;
@@ -106,6 +112,7 @@ Tensor *OpFactory::rms_norm(Graph &g, Tensor *x, Tensor *weight, float eps, std:
     // rms_norm_i : [n_embd , n_tokens]
     Tensor *result = create_tensor(g, name, x->dataType, {x->dims[0], x->dims[1], x->dims[2], x->dims[3]});
     result->op = OperationType::GGML_OP_RMS_NORM;
+    result->tensorRole = TensorRole::TENSOR_ROLE_ACTIVATION;
     result->src[0] = x;
     result->src[1] = weight;
     std::memcpy(&result->op_params[0], &eps, sizeof(eps));
@@ -118,6 +125,7 @@ Tensor *OpFactory::rms_norm(Graph &g, Tensor *x, Tensor *weight, float eps, std:
 Tensor *OpFactory::silu(Graph &g, Tensor *x, std::string_view name){
     Tensor *result = create_tensor(g, name, x->dataType, {x->dims[0], x->dims[1], x->dims[2], x->dims[3]});
     result->op = OperationType::GGML_OP_UNARY;
+    result->tensorRole = TensorRole::TENSOR_ROLE_ACTIVATION;
     result->src[0] = x;
     uint32_t sub = static_cast<uint32_t>(OperationType_unary_op::GGML_UNARY_OP_SILU);
     std::memcpy(&result->op_params[0], &sub, 4);
@@ -130,6 +138,7 @@ Tensor *OpFactory::rope(Graph &g, Tensor *x, Tensor *inp_pos, Tensor *rope_theta
     // 输入和输出形状一致
     Tensor *result = create_tensor(g, name, x->dataType, {x->dims[0], x->dims[1], x->dims[2], x->dims[3]});
     result->op = OperationType::GGML_OP_ROPE;
+    result->tensorRole = TensorRole::TENSOR_ROLE_ACTIVATION;
     result->src[0] = x;
     result->src[1] = inp_pos;
     result->src[2] = rope_theta_table;
@@ -144,6 +153,7 @@ Tensor *OpFactory::flash_attn(Graph &g, Tensor *q, Tensor *k, Tensor *v, const A
     // v[n_embd,n_tokens]
     Tensor *result = create_tensor(g, name, q->dataType, {v->dims[0], q->dims[1],q->dims[2], q->dims[3]});
     result->op = OperationType::GGML_OP_FLASH_ATTN_EXT;
+    result->tensorRole = TensorRole::TENSOR_ROLE_ACTIVATION;
     result->src[0] = q;
     result->src[1] = k;
     result->src[2] = v;
@@ -154,7 +164,7 @@ Tensor *OpFactory::flash_attn(Graph &g, Tensor *q, Tensor *k, Tensor *v, const A
 // table: [n_embd, n_vocab], indices: [n_tokens] → out: [n_embd, n_tokens]
 //Tensor *OpFactory::get_rows(Graph &g, Tensor *table, Tensor *indices);
 
-// 形状
+// 形状 TODO当前 CPU 实现会复制数据到独立输出，并不是共享存储的 view
 Tensor* OpFactory::reshape(Graph& g, Tensor* x,std::initializer_list<int64_t> shape, std::string_view name) {
     // 校验元素总数一致
     int64_t new_total = 1;
@@ -164,6 +174,7 @@ Tensor* OpFactory::reshape(Graph& g, Tensor* x,std::initializer_list<int64_t> sh
     // 创建新张量
     Tensor* result = create_tensor(g, name, x->dataType, shape);
     result->op     = OperationType::GGML_OP_RESHAPE;
+    result->tensorRole = TensorRole::TENSOR_ROLE_ACTIVATION;
     result->src[0] = x;
     return result;
 }
