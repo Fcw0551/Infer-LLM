@@ -1,0 +1,2 @@
+test,run,threads,prompt_tokens,generated_tokens,wall_s,prepare_s,build_s,execute_s,sample_s,cleanup_s,tokens_per_second,ttft_s,decode_tokens_per_second,tpot_ms,request_s,peak_rss_mib,token_checksum
+pg-no-kv,1,8,128,128,1214.44167835,0.000202362,0.020652677,1211.47967423,0.071512286,2.868856842,0.105398227252,6.858244425,0.105171439461,9508.28480739,1214.41041496,3484.55078125,14137544605477148416

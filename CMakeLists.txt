@@ -17,6 +17,11 @@ add_library(inferllm STATIC
     src/backends/cpu_backend.cpp
     src/backends/cuda_backend.cpp
     src/models/Qwen3.cpp
+    src/tokenizer/tokenizer.cpp
+    src/tokenizer/tokenizer_gguf.cpp
+    src/tokenizer/tokenizer_pre.cpp
+    src/tokenizer/tokenizer_bpe.cpp
+    src/activationManager.cpp
     src/backend.cpp
     src/gguf_parser.cpp
     src/graph.cpp
@@ -26,10 +31,6 @@ add_library(inferllm STATIC
     src/sampler.cpp
     src/scheduler.cpp
     src/util.cpp
-    src/tokenizer/tokenizer.cpp
-    src/tokenizer/tokenizer_gguf.cpp
-    src/tokenizer/tokenizer_pre.cpp
-    src/tokenizer/tokenizer_bpe.cpp
     
 )
 

@@ -5,7 +5,8 @@
 #include<unordered_map>
 #include"graph.hpp"
 #include "util.hpp"
-#include "../include/backend.hpp"   
+#include "../include/backend.hpp"  
+#include "../include/activationManager.hpp" 
 //#include "kvcacheManager.hpp"
 
 // 承担计算资源与计算任务的调度
@@ -45,6 +46,7 @@ class Scheduler{
 public:
     Scheduler(std::vector<Backend* >& backend)
     :_backends(backend)
+    ,_ac(backend)
     {}
     // 服务scheduler
     void add_backend(Backend& backend){
@@ -68,10 +70,13 @@ private:
     // ------helper-------
     // 初始化内存容量
     std::expected<std::unordered_map<Backend *, size_t>, std::error_code> init_memory_budgets(Graph &g);
-
+    // 制作一张规划计算图（后续传给activationManager）
+    std::expected<void,std::error_code> build_activation_graph(Graph &graph);
 private:
     //Graph* _graph;                                                            // TODO 现在暂时没有绑定graph，因为目前每次都要decode
     std::vector<Backend *> _backends;                                           // 管理可用计算设备
     std::vector<Subgraph> _subgraphs;                                           // 子图
-    //KVCacheManager* _kv = nullptr;                                              // kv管理类
+    Graph _activation_graph;                                                    // 给_ac的规划图
+    ActivationManager _ac;                                                      // activation管理类
+    //KVCacheManager* _kv = nullptr;                                            // kv管理类
 };

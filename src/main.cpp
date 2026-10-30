@@ -12,23 +12,6 @@
 #include <numeric>
 #include <optional>
 
-namespace {
-// 本例只有 CPU，且各计算节点独立分配激活，无 view/跨设备副本。
-// 在读取 logits 后、Graph 销毁前释放；失败回滚已置空的 data 会跳过。
-struct CpuGraphActivations {
-    Graph& graph;
-    Backend& backend;
-    ~CpuGraphActivations() {
-        for (Tensor* tensor : graph.nodes()) {
-            if (tensor->data && tensor->backend == &backend) {
-                backend.free(BufferKind::ACTIVATION, tensor->data);
-                tensor->data = nullptr;
-            }
-        }
-    }
-};
-}
-
 int main(int argc, char** argv){
     size_t max_new_tokens = 8;
     if (argc > 2) {
@@ -188,6 +171,8 @@ int main(int argc, char** argv){
     graph_ctx.set_input_pos(input_pos);
 
     Sampler sampler;
+    // Scheduler 跨轮保留 Activation Buffer；析构时统一释放，且早于 Backend 析构。
+    Scheduler sched(bc);
     std::vector<int32_t> generated;
     std::cout << "Greedy 生成，最多 " << max_new_tokens << " 个新 token；无 KV cache，每轮重算完整前缀\n";
     for (size_t step = 0; step < max_new_tokens; ++step) {
@@ -210,7 +195,7 @@ int main(int argc, char** argv){
 
         int32_t next_token;
         {
-            // 每轮使用新图；图执行/读取失败时，guard 也会回收本轮激活。
+            // 每轮使用新图；激活内存由 Scheduler 持有，错误退出也由其析构回收。
             auto graph_result = qwen3_ptr->build_graph(graph_ctx);
             if (!graph_result) {
                 std::cerr << "建图失败：" << graph_result.error().message() << '\n';
@@ -221,8 +206,6 @@ int main(int argc, char** argv){
                 std::cerr << "图准备失败：" << r.error().message() << '\n';
                 return 1;
             }
-            Scheduler sched(bc);
-            CpuGraphActivations cleanup{g, *cpu_backend};
             if (auto r = sched.execute(g); !r) {
                 std::cerr << "执行失败：" << r.error().message() << '\n';
                 return 1;

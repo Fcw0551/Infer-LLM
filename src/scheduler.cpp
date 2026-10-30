@@ -7,9 +7,11 @@ std::expected<void, std::error_code> Scheduler::execute(Graph& g){
     _subgraphs.clear();
     if (auto r = split_graph(g); !r)
         return r;
-    // TODO : 分配策略之前增加图生命周期分析 activation达到复用结果，减少内存占用 
-    // 分配内存
-    if (auto r = alloc_graph(g); !r)
+    // 生成规划图
+    if (auto r = build_activation_graph(g); !r)
+        return r;
+    // 规划图，生命周期分析 activation达到复用结果，减少内存占用,分配内存
+    if (auto r = alloc_graph(_activation_graph); !r)
         return r;
     // 执行子图：先把前一阶段算出来、但不在本设备上的边界张量搬过来，再算本子图
     for (auto &sub : _subgraphs){
@@ -277,6 +279,7 @@ std::expected<void, std::error_code> Scheduler::split_graph(Graph &g){
                     t->tensorRole = TensorRole::TENSOR_ROLE_ACTIVATION;
                     t->backend = sub.backend;
                     t->device = sub.backend->get_info().type;
+                    t->src[0] = src;
                     cpy = g.adopt(std::move(t));   // 所有权归总图，不参与拓扑
                     copy_map.emplace(src, cpy);
                     sub.copies.emplace_back(src, cpy);
@@ -335,90 +338,26 @@ std::expected<void, std::error_code> Scheduler::copy_tensor(Tensor *src, Tensor 
 
 
 
-// 为计算图中的 tensor 分配内存
-// 只分配“还没有 data”的激活张量：
-//   - 权重 / 图输入 / rope 表：加载或调用方已经填好 data，跳过
-//   - VIEW（以后 KV 视图）：data 指向别人的 arena，这里不能替它申请
-// backend 已经在 split_graph 的 pass1~4 定好，这里只做预算检查 + 申请
-// 所以本质就是申请那些还没有data的激活值
+// 申请那些还没有data的激活值
 std::expected<void, std::error_code> Scheduler::alloc_graph(Graph &g){
-    
-    // 每台设备的可用额度：容量 * MEMORY_FACTOR - 权重常驻
-    auto budgets_result = init_memory_budgets(g);
-    if (!budgets_result)
-        return std::unexpected(budgets_result.error());
-
-    auto budgets = *budgets_result;
-
-    // 本次已经申请出去的块，失败时统一回滚，避免一半成功一半失败
-    struct Pending
-    {
-        Backend *backend;
-        Tensor *tensor;
-        void *ptr;
-    };
-    std::vector<Pending> allocated;
-
-    auto alloc_one = [&](Tensor *t) -> std::expected<void, std::error_code> {
-        if (!t || t->data){
-            return {};                                   // 已经有人填过 data（rope之类的）
-        }
-        const uint8_t role = static_cast<uint8_t>(t->tensorRole);
-        if (role & static_cast<uint8_t>(TensorRole::TENSOR_ROLE_WEIGHT)){
-            return {};                                   // 权重不归 scheduler 分配
-        }
-        if (role & static_cast<uint8_t>(TensorRole::TENSOR_ROLE_VIEW)){
-            // 视图必须由建图方把 data 指到已有 buffer 上，这里申请会覆盖掉
-            return std::unexpected(std::make_error_code(std::errc::invalid_argument));
-        }
-        if (!t->backend){
-            return std::unexpected(std::make_error_code(std::errc::invalid_argument));
-        }
-        const size_t bytes = t->byte_size();
-        if (bytes == 0){
-            return {};
-        }
-        auto it = budgets.find(t->backend);
-        if (it == budgets.end()){
-            return std::unexpected(std::make_error_code(std::errc::invalid_argument));
-        }
-        if (it->second < bytes){
-            return std::unexpected(std::make_error_code(std::errc::not_enough_memory));
-        }
-        auto p = t->backend->alloc(BufferKind::ACTIVATION,bytes);       // todo alloc出来的内存，没有管理导致内存泄漏，后续会处理
-        if (!p){
-            return std::unexpected(p.error());
-        }
-        t->data = *p;
-        it->second -= bytes;
-        allocated.push_back({t->backend, t, *p});
-        return {};
-    };
-
-    auto rollback = [&] {
-        for (auto &a : allocated){
-            a.backend->free(BufferKind::ACTIVATION,a.ptr);
-            a.tensor->data = nullptr;
-        }
-        allocated.clear();
-    };
-
-    // 内部节点：拓扑序里每个节点的输出都是一块激活
-    for (Tensor *node : g.nodes()){
-        if (auto r = alloc_one(node); !r){
-            rollback();
-            return r;
-        }
+    // split规划好计算图之后，要传给activationManager 做activation的复用
+   
+    // 根据分配图规划 Tensor 的内存布局
+    auto result = _ac.plan(_activation_graph);
+    if (!result) {
+        return std::unexpected(result.error());
     }
 
-    // 边界拷贝：pass5 用 g.adopt 创建，既不在 nodes() 也不在 leafs() 里
-    for (auto &sub : _subgraphs){
-        for (auto &c : sub.copies){
-            if (auto r = alloc_one(c.second); !r){
-                rollback();
-                return r;
-            }
-        }
+    // 确保底层 Activation Buffer 容量足够
+    result = _ac.allocate();
+    if (!result) {
+        return std::unexpected(result.error());
+    }
+
+    // 根据规划结果绑定 tensor->data
+    result = _ac.bind();
+    if (!result) {
+        return std::unexpected(result.error());
     }
 
     return {};
@@ -459,3 +398,20 @@ std::expected<std::unordered_map<Backend*, size_t>,std::error_code> Scheduler::i
     return budgets;
 }
 
+std::expected<void, std::error_code> Scheduler::build_activation_graph(Graph &graph){
+    // 遍历每一张子图，然后构建出来一张完整的plan graph
+    _activation_graph.clear();
+    for (auto &sub : _subgraphs){
+        // 先引入拷贝结点，因为拷贝结点是依赖前面的子图的
+        for (auto &copy : sub.copies){
+            _activation_graph.add_node_ref(copy.second);
+        }
+        // 后引入计算结点，因为计算结点依赖拷贝结点
+        for (Tensor *node : sub.graph.nodes()){
+            _activation_graph.add_node_ref(node);
+        }
+        for (Tensor *output : graph.outputs())
+            _activation_graph.mark_output(output);
+    }
+    return {};
+}
