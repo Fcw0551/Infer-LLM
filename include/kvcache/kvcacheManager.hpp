@@ -24,9 +24,8 @@ struct SequenceState {
 class KVCacheManager
 {
 public:
-    KVCacheManager(std::unique_ptr<KVStorage> storage,std::unique_ptr<KVStrategy> strategy) noexcept
-    : _storage(std::move(storage))
-    , _strategy(std::move(strategy)) 
+    explicit KVCacheManager(std::unique_ptr<KVStrategy> strategy) noexcept
+    : _strategy(std::move(strategy))
     {}
 
     ~KVCacheManager() = default;
@@ -45,7 +44,7 @@ public:
     // std::errc::device_or_resource_busy；容量不足返回 std::errc::not_enough_memory
     std::expected<void, std::error_code> reserve_append(SequenceId id, std::size_t n_tokens);
 
-    // 获取某层的 K/V 视图，包含本轮 pending 范围  要求该层已 begin_append，且 pending 非空
+    // 校验序列事务后向 Strategy 请求视图,要求已有 pending
     std::expected<KVLayerAccess, std::error_code> acquire_layer(SequenceId id, std::size_t layer);
 
     // 所有层计算成功后提交本轮追加：committed_length += pending.count
@@ -64,14 +63,7 @@ public:
     std::expected<void, std::error_code> clear_sequence();
 
 private:
-    // 将有序映射转换为非拥有视图；不拼接或复制 KV 数据
-    std::expected<KVRangeAccess, std::error_code> make_KVRangeAccess(const KVMapping& mapping, TokenRange range, std::size_t layer,std::unordered_map<StorageId, KVStorageAccess>& accesses);
-
-private:
-    std::unique_ptr<KVStorage> _storage;   // 物理层
-    std::unique_ptr<KVStrategy> _strategy; // 逻辑层
-    std::vector<KVLayerSpec> _layers;
-
+    std::unique_ptr<KVStrategy> _strategy;
     std::unordered_map<SequenceId, SequenceState> _sequences;
     SequenceId _next_sequence_id = 1;
 };
