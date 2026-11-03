@@ -16,6 +16,11 @@ option(INFERLLM_WITH_METAL "Build with Metal backend" OFF)
 add_library(inferllm STATIC
     src/backends/cpu_backend.cpp
     src/backends/cuda_backend.cpp
+    src/kvcache/KVStorages/naiveKVStorage.cpp
+    src/kvcache/KVStrategys/contiguousKVStrategy.cpp
+    src/kvcache/kvcacheManager.cpp
+    src/kvcache/kvstorage.cpp
+    src/kvcache/kvstrategy.cpp
     src/models/Qwen3.cpp
     src/tokenizer/tokenizer.cpp
     src/tokenizer/tokenizer_gguf.cpp
