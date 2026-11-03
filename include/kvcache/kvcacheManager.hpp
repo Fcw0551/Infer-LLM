@@ -47,6 +47,9 @@ public:
     // 校验序列事务后向 Strategy 请求视图,要求已有 pending
     std::expected<KVLayerAccess, std::error_code> acquire_layer(SequenceId id, std::size_t layer);
 
+    // 等计算完成后归还访问（与 commit_append / abort_append 是不同操作）
+    std::expected<void, std::error_code> release_layer(KVLayerAccess& access) noexcept;
+
     // 所有层计算成功后提交本轮追加：committed_length += pending.count
     std::expected<void, std::error_code> commit_append(SequenceId id);
 
