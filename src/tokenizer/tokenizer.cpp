@@ -30,8 +30,7 @@ std::expected<Tokenizer, std::error_code> Tokenizer::from_gguf(const GGUFMetadat
     return Tokenizer(std::move(*data));
 }
 
-std::expected<std::vector<int32_t>, std::error_code>
-Tokenizer::encode(std::string_view text, EncodeOptions options) const {
+std::expected<std::vector<int32_t>, std::error_code> Tokenizer::encode(std::string_view text, EncodeOptions options) const {
     using namespace tokenizer_detail;
     if (!data_) return std::unexpected(make_error_code(TokenizerError::InvalidOptions));
     const auto& d = *data_;
