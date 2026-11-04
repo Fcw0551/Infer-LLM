@@ -41,7 +41,6 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 	ap.head_dim = n_embd_head_k;					  // 128
 	ap.scale = 1.0f / std::sqrt(float(n_embd_head_k));  // 1/sqrt(128)
 	ap.causal = true;									      // Prefill 阶段开启
-	ap.n_ctx = static_cast<uint32_t>(n_tokens);   		      // 填 token 数(TODO，先简单处理，因为还没有实现kvcache。要区分要算多少token)
 	ap.sliding_window = 0;								      // Qwen3 这里不需要，就填 0
 
 	for (size_t i = 0; i < _hparams.n_layer; i++){
@@ -71,10 +70,22 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 		Tensor *q_rope = OpFactory::rope(g, q_norm, inp_pos, rope_theta_table, "rope_q_" + std::to_string(i));
 		Tensor *k_rope = OpFactory::rope(g, k_norm, inp_pos, rope_theta_table, "rope_k_" + std::to_string(i));
 
-		// TODO：kvcache暂时还为做
+		// kvcache
+		// 将k_rope 和 v_reshape 缓存起来，然后拼接一个完整的送入flase_attn
+		auto result = g_ctx.acquire_kv_layer(i);
+		if (!result){
+			return std::unexpected(result.error());
+		}
+		KVLayerAccess& access = **result;
+		ap.n_ctx = static_cast<uint32_t>(access.n_past); // 本层已缓存的历史 token 数
+		// ----- 将本轮 KV 写入缓存，取得完整缓存视图 ------（TODO：暂时先做了连续分配，如果后期要支持分页，这里得改，然后算子也得改）
+		Tensor *k_cached = append_kv(g, k_rope, access.writable.k.front().view, access.readable.k.front().view);
 
+		Tensor *v_cached = append_kv(g, v_reshape, access.writable.v.front().view, access.readable.v.front().view);
+
+		// ----- Attention 使用本轮 Q 和完整 KV ------
 		// SDPA / FlashAttention
-		cur = OpFactory::flash_attn(g, q_rope, k_rope, v_reshape, ap, "flash_attn_" + std::to_string(i));
+		cur = OpFactory::flash_attn(g, q_rope, k_cached, v_cached, ap, "flash_attn_" + std::to_string(i));
 
 		// reshape，因为flash_attn自动处理了permute了，所以整个qwen3无需permute算子，只要reshape即可
 		cur = OpFactory::reshape(g, cur, {n_embd_head_v * n_head, n_tokens, 1, 1}, "attn_reshape_" + std::to_string(i));

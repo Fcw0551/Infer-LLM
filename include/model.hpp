@@ -110,13 +110,14 @@ public:
     // 如果用户没有指定层数，那么这里就优先安排GPU 函数应该再split_graph之前调用
     std::expected<void, std::error_code> plan_weights_placement(const std::vector<Backend*>& devices,const struct PlacementConfig&cfg);
     //不同的模型构建计算图的方式不同
-    virtual std::expected<Graph, std::error_code> build_graph(GraphContext& g_ctx) const=0; 
+    virtual std::expected<Graph, std::error_code> build_graph(GraphContext& g_ctx) const=0;
+    
+    Tensor *append_kv(Graph &g, Tensor *current, const Tensor &writable, const Tensor &readable) const;
+
 private:
     std::vector<Tensor *> get_layer_tensors(const LayerWeights &lw);
-    std::expected<void,std::error_code> alloc_weight();
+    std::expected<void, std::error_code> alloc_weight();
 };
-
-
 
 //model的工厂 
 class ModelRegistry{

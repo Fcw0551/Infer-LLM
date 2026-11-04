@@ -1,0 +1,54 @@
+{
+  "p32": {
+    "exit_code": 0,
+    "seconds": 62.046849317000124,
+    "min_mem_available_mib": 5571.546875,
+    "max_swap_used_mib": 0.0,
+    "swapin_pages": 0,
+    "swapout_pages": 0,
+    "memory_full_stall_ms": 0.0,
+    "memory_some_stall_ms": 0.0,
+    "io_full_stall_ms": 51.586,
+    "external_cpu_percent": 1.0682511173301033,
+    "pressure_flag": false
+  },
+  "p64": {
+    "exit_code": 0,
+    "seconds": 71.05442146600035,
+    "min_mem_available_mib": 5536.34765625,
+    "max_swap_used_mib": 0.0,
+    "swapin_pages": 0,
+    "swapout_pages": 0,
+    "memory_full_stall_ms": 0.0,
+    "memory_some_stall_ms": 0.0,
+    "io_full_stall_ms": 73.89,
+    "external_cpu_percent": 1.3061910745116472,
+    "pressure_flag": false
+  },
+  "p128": {
+    "exit_code": 0,
+    "seconds": 86.06258112399973,
+    "min_mem_available_mib": 5462.50390625,
+    "max_swap_used_mib": 0.0,
+    "swapin_pages": 0,
+    "swapout_pages": 0,
+    "memory_full_stall_ms": 0.0,
+    "memory_some_stall_ms": 0.0,
+    "io_full_stall_ms": 78.091,
+    "external_cpu_percent": 1.1771088008204091,
+    "pressure_flag": false
+  },
+  "p256": {
+    "exit_code": 0,
+    "seconds": 110.089597185,
+    "min_mem_available_mib": 5290.5546875,
+    "max_swap_used_mib": 0.0,
+    "swapin_pages": 0,
+    "swapout_pages": 0,
+    "memory_full_stall_ms": 0.0,
+    "memory_some_stall_ms": 0.0,
+    "io_full_stall_ms": 76.929,
+    "external_cpu_percent": 1.525896528916113,
+    "pressure_flag": false
+  }
+}

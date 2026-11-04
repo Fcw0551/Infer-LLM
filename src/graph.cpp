@@ -1,4 +1,5 @@
 #include "../include/graph.hpp"
+#include "../include/kvcache/kvcacheManager.hpp"
 #include <new>
 //------Graph--------
 
@@ -136,3 +137,55 @@ Tensor *GraphContext::make_tensor(std::string name, DataType type, std::initiali
     return raw;
 }
 
+std::expected<void, std::error_code> GraphContext::set_kv_cache(KVCacheManager *kv, SequenceId id) noexcept{
+    if (!_kv_accesses.empty() && (kv != _kv_manager || id != _sequence_id)) {
+        return std::unexpected(std::make_error_code(std::errc::device_or_resource_busy));
+    }
+    _kv_manager = kv;
+    _sequence_id = id;
+    return {};
+}
+
+std::expected<void, std::error_code> GraphContext::release_kv_access(){
+    // 没有访问需要归还，重复调用也成功
+    if (_kv_accesses.empty()){
+        return {};
+    }
+
+    if (!_kv_manager){
+        return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+    }
+
+    for (auto &access : _kv_accesses){
+        auto result = _kv_manager->release_layer(access);
+        if (!result){
+            return std::unexpected(result.error());
+        }
+    }
+
+    // 全部归还后再销毁这些访问对象
+    _kv_accesses.clear();
+    return {};
+}
+
+
+std::expected<KVLayerAccess*, std::error_code> GraphContext::acquire_kv_layer(std::size_t layer) {
+    if (!_kv_manager) {
+        return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+    }
+
+    auto result = _kv_manager->acquire_layer(_sequence_id, layer);
+    if (!result) {
+        return std::unexpected(result.error());
+    }
+
+    try {
+        _kv_accesses.push_back(std::move(*result));
+    } catch (...) {
+        // 容器登记失败，也要归还刚刚获取的访问
+        _kv_manager->release_layer(*result);
+        throw;
+    }
+
+    return &_kv_accesses.back();
+}

@@ -8,6 +8,9 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+
+struct AttnParams;
+
 // 线程池
 class ThreadPool
 {
@@ -168,6 +171,8 @@ private:
     std::expected<void, std::error_code> compute_add(Tensor* dst);
     std::expected<void, std::error_code> compute_silu(Tensor* dst);
     std::expected<void, std::error_code> compute_mul(Tensor* dst);
+    std::expected<void, std::error_code> compute_cpy(Tensor* dst);
+    std::expected<void, std::error_code> compute_view(Tensor* dst);
 
 
     // 辅助检查函数

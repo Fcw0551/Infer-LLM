@@ -1,4 +1,6 @@
 #include "../../include/backends/cpu_backend.hpp"
+#include "../../include/op_factory.hpp"
+#include <cstring>
 
 // ------ 线程池 -------
 void ThreadPool::init(int n_threads) {
@@ -240,6 +242,8 @@ std::expected<void, std::error_code> CPUBackend::dispatch(Tensor* node) {
     case OperationType::GGML_OP_RESHAPE:        return compute_reshape(node);
     case OperationType::GGML_OP_ROPE:           return compute_rope(node);
     case OperationType::GGML_OP_FLASH_ATTN_EXT: return compute_flash_attn(node);
+    case OperationType::GGML_OP_CPY:            return compute_cpy(node);
+    case OperationType::GGML_OP_VIEW:           return compute_view(node);
 
     case OperationType::GGML_OP_NONE:
         return {};   // 叶子，跳过
@@ -534,6 +538,12 @@ std::expected<void, std::error_code> CPUBackend::compute_flash_attn(Tensor* dst)
     Tensor *src0 = dst->src[0];             // q
     Tensor *src1 = dst->src[1];            // k
     Tensor *src2 = dst->src[2];            // v
+
+    // 参数
+    AttnParams p;
+    std::memcpy(&p, dst->op_params, sizeof(p));
+    uint32_t n_past = p.n_ctx;
+
     INFERLLM_TENSOR_TERNARY_LOCALS
 
     // 是不是GQA
@@ -568,7 +578,7 @@ std::expected<void, std::error_code> CPUBackend::compute_flash_attn(Tensor* dst)
         float scale=1.0f/std::sqrt(static_cast<float>(dims00));              // sqrt(D)
         for (int64_t key_token = 0; key_token < dims12; ++key_token){       
             // mask : 只允许访问当前位置之前的token
-            if (key_token > q_token){   // TODO:因为还没有接入kvcache，所以暂时都是一次性推理
+            if (key_token > n_past + q_token){
                 //当前 Query 正在和第几个 Key token 计算注意力分数
                 scores[key_token] = -std::numeric_limits<float>::infinity();
                 continue;
@@ -692,5 +702,47 @@ std::expected<void, std::error_code> CPUBackend::compute_mul(Tensor* dst){
         } 
     });
 
+    return {};
+}
+
+std::expected<void, std::error_code> CPUBackend::compute_cpy(Tensor *dst){
+    if (!dst || !dst->src[0]){
+        return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+    }
+
+    const Tensor *src = dst->src[0];
+
+    // ----- 检查源和目标 ------
+    if (!src->data || !dst->data || src->dataType != dst->dataType || src->dims != dst->dims){
+        return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+    }
+
+    auto is_contiguous = [](const Tensor &t)
+    {
+        size_t stride = dataType_size(t.dataType);         
+
+        for (size_t i = 0; i < t.dims.size(); ++i){
+            if (t.dims[i] <= 0 || t.strides[i] <= 0 || static_cast<size_t>(t.strides[i]) != stride){
+                return false;
+            }
+
+            const auto dim = static_cast<size_t>(t.dims[i]);
+            if (dim > std::numeric_limits<size_t>::max() / stride){
+                return false;
+            }
+            stride *= dim;
+        }
+        return true;
+    };
+
+    if (!is_contiguous(*src) || !is_contiguous(*dst)){
+        return std::unexpected(std::make_error_code(std::errc::not_supported));
+    }
+
+    // ----- 写入已经分配好的缓存内存 ------
+    std::memcpy(dst->data, src->data, src->byte_size());
+    return {};
+}
+std::expected<void, std::error_code> CPUBackend::compute_view(Tensor *dst){
     return {};
 }

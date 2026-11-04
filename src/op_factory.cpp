@@ -157,6 +157,7 @@ Tensor *OpFactory::flash_attn(Graph &g, Tensor *q, Tensor *k, Tensor *v, const A
     result->src[0] = q;
     result->src[1] = k;
     result->src[2] = v;
+    std::memcpy(&result->op_params[0], &p, sizeof(p));
     return result;
 }
 

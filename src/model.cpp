@@ -599,6 +599,31 @@ std::vector<Tensor *> ModelBase::get_layer_tensors(const LayerWeights &lw){
     return ts;
 };
 
+Tensor * ModelBase::append_kv(Graph &g, Tensor *current, const Tensor &writable, const Tensor &readable)const{
+    // ----- 创建写缓存节点 ------
+    // 复制 Tensor 描述；data 仍指向 Storage 管理的缓存内存
+    auto write = std::make_unique<Tensor>(writable);
+    write->name = current->name + "_cache_write";
+    write->op = OperationType::GGML_OP_CPY;
+    write->src.fill(nullptr);
+    write->src[0] = current;
+    write->pinned = true;
+
+    Tensor *write_node = g.add_node(std::move(write));
+
+    // ----- 创建写入完成后的完整缓存视图 ------
+    auto full = std::make_unique<Tensor>(readable);
+    full->name = current->name + "_cache_full";
+    full->op = OperationType::GGML_OP_VIEW;
+    full->src.fill(nullptr);
+
+    // 这条依赖保证 Attention 读取前，新增 KV 已经写入
+    full->src[0] = write_node;
+    full->pinned = true;
+
+    return g.add_node(std::move(full));
+}
+
 //----------------------注册表------------------------
 void register_Qwen3(){
     ModelRegistry::instance().register_arch("qwen3",

@@ -7,6 +7,10 @@
 #include <iostream>
 #include "tensor.hpp"
 #include "util.hpp"
+#include "kvcache/kvutil.hpp"
+
+class KVCacheManager;
+
 class Graph {
 public:
     // 子图使用：只存引用
@@ -91,6 +95,16 @@ public:
     // GraphContext 内部创建的张量（输入张量、freqs）都挂在这
     Tensor *make_tensor(std::string name, DataType type, std::initializer_list<int64_t> shape);
 
+    // ------------- kv cache 模块 -------------------
+    // 未归还访问时禁止切换 Manager 或序列，失败时保留原绑定。
+    std::expected<void, std::error_code> set_kv_cache(KVCacheManager *kv, SequenceId id) noexcept;
+
+    // 释放_kv_accesses的引用
+    std::expected<void, std::error_code> release_kv_access();
+
+    //  获取layer层的KVLayerAccess
+    std::expected<KVLayerAccess*, std::error_code> acquire_kv_layer(std::size_t layer);
+
 private:
     // 输入
     Tensor *_inp_tokens = nullptr; // [n_tokens]  I32
@@ -125,4 +139,9 @@ private:
     std::vector<std::unique_ptr<Tensor>> _owned;
     // RoPE 数据由 context 拥有，输入 Tensor 的 data 仍然借用调用者内存
     std::vector<std::unique_ptr<float[]>> _rope_buffers;
+
+    // kv 模块， 生命周期是外层去管理，这里只是引用
+    KVCacheManager* _kv_manager = nullptr;
+    std::vector<KVLayerAccess> _kv_accesses;    
+    SequenceId _sequence_id = kInvalidSequenceId;
 };

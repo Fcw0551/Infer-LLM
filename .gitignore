@@ -24,6 +24,3 @@ test/
 
 #bench
 benchmarks
-
-#性能分析
-docs
