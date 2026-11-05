@@ -2,6 +2,9 @@
 #include "../backend.hpp"
 #include "../util.hpp"
 #include "../tensor.hpp"
+#include "../memoryPool.hpp"
+#include "../cuda_util.hpp"
+#include "../kernels/cuda/kernel_f32.hpp"
 #include <cuda_runtime.h>
 //cuda探测函数
 std::vector<DeviceInfo> probe_cuda_devices();
@@ -14,16 +17,14 @@ public:
     CUDABackend(int device_id,DeviceInfo info,const PoolConfig&cfg) 
     :Backend(device_id,info,cfg)
     {
+        init_pools(std::make_unique<CUDAPhysicalAllocator>());              //实例化出对应的内存池
         std::cout << "cuda 实例化中 device_id: " << device_id << std::endl;
         // 切换到目标设备
         cudaSetDevice(_device_id);
 
         //  创建 stream
         cudaStream_t stream;
-        cudaError_t err = cudaStreamCreate(&stream);                //(TODO，只创建了一条)
-        if (err != cudaSuccess){
-            throw std::runtime_error("cudaStreamCreate failed");    //先用异常，我们的推理框架初心是不用异常体系的，
-        }
+        check_cuda(cudaStreamCreate(&stream));                           //(TODO，只创建了一条)
         _stream = stream;
     }
 
@@ -46,15 +47,7 @@ public:
     }
 
     // 是否支持算子，上层schedule调用
-    bool supports_op(OperationType op, const Tensor& t) const {
-        switch (op){
-            
-        //…… ……（TODO）
-
-        default:
-            return false;
-        }
-    }
+    bool supports_op(OperationType op, const Tensor& t) const;
 
     // 内存管理
     std::expected<void *, std::error_code> alloc(BufferKind kind,size_t bytes);
@@ -70,12 +63,12 @@ public:
     std::expected<void, std::error_code> copy_tensor_get(const Tensor *tensor, void *data, size_t offset, size_t size);
     // 设备与设备之间可能要有高速，不需要经过cpu，如果这个方案不行，最后要退回cpu兜底
     //(optional) tensor copy: dst is in the buffer, src may be in any buffer, including buffers from a different backend (return false if not supported)
-    std::expected<bool, std::error_code> copy_tensor_high(const Tensor *src, Tensor *dst) const ;   
-                                                   
-                                                        
+    std::expected<bool, std::error_code> copy_tensor_high(const Tensor *src, Tensor *dst) const ;
 
     // 执行 scheduler传子图给每个后端执行
-    std::expected<void, std::error_code> compute(Graph & subGraph) ;
+    std::expected<void, std::error_code> compute(Graph &subGraph);
+    
+    std::expected<void, std::error_code> dispatch(Tensor *node);
 
     // ========== 6. 同步（Scheduler 跨设备边界用）==========
     virtual void synchronize(){
@@ -90,9 +83,14 @@ public:
     // }
     // virtual BufferPool* get_buffer_pool(BufferKind /*kind*/) { return nullptr; }
 private:
-    //int _device_id;
-    //DeviceInfo _info;
-    std::vector<void*> _allocations;   // 谁分配的tensor，要由谁释放
+    // int _device_id;                                         // 设备id
+    // DeviceInfo _info;                                       // 设备信息
+    // PoolConfig _pool_config;                                // 内存池的config
+    // std::unique_ptr<PhysicalAllocator> _phys_allocator;     // 实际的，原生的物理接口
+    // std::unique_ptr<MemoryPool> _weights_pool;              // 权重池
+    // std::unique_ptr<MemoryPool> _activation_pool;           // 激活池
+    // std::unique_ptr<MemoryPool> _kvcache_pool;              // kvcache池
+    
     cudaStream_t _stream;
     
     //TODO : 暂时没有做MIG 后期可以新增

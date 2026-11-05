@@ -1,4 +1,8 @@
 #pragma once 
+#include <cuda_runtime.h>
+#include "cuda_util.hpp"
+
+
 
 
 //------- 底层物理分配接口-------
@@ -30,8 +34,25 @@ public:
     }
 };
 
-// TODO CUDAPhysicalAllocator
+// CUDAPhysicalAllocator
+class CUDAPhysicalAllocator : public PhysicalAllocator{
+public:
+    std::expected<void *, std::error_code> raw_alloc(const size_t bytes) override{
+        if (bytes == 0){
+            return static_cast<void *>(nullptr);
+        }
+        void* ptr=nullptr;
+        check_cuda(cudaMalloc((void**)&ptr,bytes));
 
+        if (ptr == nullptr){
+            return std::unexpected(std::make_error_code(std::errc::not_enough_memory));
+        }
+        return ptr;
+    }
+    void raw_free(void *ptr) override{
+        cudaFree(ptr);
+    }
+};
 
 
 

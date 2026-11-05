@@ -58,23 +58,35 @@ std::expected<void *, std::error_code> CUDABackend::alloc(BufferKind kind, size_
     // 每次都要bind 子线程不会继承父线程
     cudaSetDevice(_device_id);
 
-    void* p = nullptr;
-    cudaError_t err = cudaMalloc(&p, bytes);
-    if (err != cudaSuccess) {
-        return std::unexpected(std::make_error_code(std::errc::not_enough_memory));
+    switch (kind){
+    case BufferKind::WEIGHTS:
+        return _weights_pool->alloc(bytes);
+    case BufferKind::ACTIVATION:
+        return _activation_pool->alloc(bytes);
+    case BufferKind::KVCACHE:
+        return _kvcache_pool->alloc(bytes);
+    default:
+        return std::unexpected(std::make_error_code(std::errc::invalid_argument));
     }
-    _allocations.push_back(p);
-    return p;
 }
 
 void CUDABackend::free(BufferKind kind,void* ptr) {
     if (!ptr) return;
     // 之前探测过，bind 防止操作别的
     cudaSetDevice(_device_id);
-    cudaFree(ptr);
-
-    auto it = std::find(_allocations.begin(), _allocations.end(), ptr);
-    if (it != _allocations.end()) _allocations.erase(it);
+    switch (kind){
+    case BufferKind::WEIGHTS:
+        _weights_pool->free(ptr);
+        break;
+    case BufferKind::ACTIVATION:
+        _activation_pool->free(ptr);
+        break;
+    case BufferKind::KVCACHE:
+        _kvcache_pool->free(ptr);
+        break;
+    default:
+        break;
+    }
 }
 
  // 从 host 的内存数据 写入这个 tensor 所在的设备的buffer
@@ -163,10 +175,68 @@ std::expected<bool, std::error_code> CUDABackend::copy_tensor_high(const Tensor 
 }
 
 
+
 // 执行 scheduler传子图给每个后端执行
-std::expected<void, std::error_code> CUDABackend::compute(Graph & subGraph){
-    std::cout<<"还没做……"<<std::endl;
+std::expected<void, std::error_code> CUDABackend::compute(Graph &graph){
+    // 上层scheduler做切分，已经弄好了子图
+    // 子图的 nodes 已经是拓扑序——按序遍历
+    for (Tensor *node : graph.nodes()){
+        // 叶子节点跳过
+        if (node->op == OperationType::GGML_OP_NONE){
+            continue;
+        }
+
+        // 按 op 分派
+        auto r = dispatch(node);
+        if (!r){
+            std::cout << "[cpu] compute failed at node: " << node->name << " op=" << (int)node->op << "\n";
+            return r;
+        }
+    }
     return {};
+}
+
+
+
+bool CUDABackend::supports_op(OperationType op, const Tensor &t) const{
+    // …… ……（TODO）
+    return true;
+   
+}
+
+std::expected<void, std::error_code> CUDABackend::dispatch(Tensor* node) {
+    switch (node->op) {
+    case OperationType::GGML_OP_ADD:            return check_cuda(CUDA_F32::compute_add(node,_stream));
+    case OperationType::GGML_OP_MUL:            return check_cuda(CUDA_F32::compute_mul(node,_stream));
+    case OperationType::GGML_OP_UNARY:
+        {
+            uint32_t op;
+            std::memcpy(&op,&node->op_params[0],4);
+            
+            switch(static_cast<OperationType_unary_op>(op)){
+            case OperationType_unary_op::GGML_UNARY_OP_SILU:
+                return check_cuda(CUDA_F32::compute_silu(node,_stream));
+            default:
+                return std::unexpected(std::make_error_code(std::errc::not_supported));
+            }
+           
+        }
+    case OperationType::GGML_OP_RMS_NORM:       return check_cuda(CUDA_F32::compute_rms_norm(node,_stream));
+    case OperationType::GGML_OP_GET_ROWS:       return check_cuda(CUDA_F32::compute_get_rows(node,_stream));
+    case OperationType::GGML_OP_MUL_MAT:        return check_cuda(CUDA_F32::compute_mul_mat(node,_stream));
+    case OperationType::GGML_OP_RESHAPE:        return check_cuda(CUDA_F32::compute_reshape(node,_stream));
+    case OperationType::GGML_OP_ROPE:           return check_cuda(CUDA_F32::compute_rope(node,_stream));
+    case OperationType::GGML_OP_FLASH_ATTN_EXT: return check_cuda(CUDA_F32::compute_flash_attn(node,_stream));
+    case OperationType::GGML_OP_CPY:            return check_cuda(CUDA_F32::compute_cpy(node,_stream));
+    case OperationType::GGML_OP_VIEW:           return check_cuda(CUDA_F32::compute_view(node,_stream));
+
+    case OperationType::GGML_OP_NONE:
+        return {};   // 叶子，跳过
+
+    default:
+        std::cerr << "[cuda] unsupported op: " << (int)node->op << "\n";
+        return std::unexpected(std::make_error_code(std::errc::not_supported));
+    }
 }
 
 

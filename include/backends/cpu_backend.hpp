@@ -143,7 +143,7 @@ public:
     }   
 
     // 执行 scheduler传子图给每个后端执行
-    virtual std::expected<void, std::error_code> compute(Graph & subGraph) ;
+    std::expected<void, std::error_code> compute(Graph & subGraph);
   
     std::expected<void, std::error_code> dispatch(Tensor* node);
     
