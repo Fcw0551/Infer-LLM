@@ -607,7 +607,7 @@ Tensor * ModelBase::append_kv(Graph &g, Tensor *current, const Tensor &writable,
     write->op = OperationType::GGML_OP_CPY;
     write->src.fill(nullptr);
     write->src[0] = current;
-    write->pinned = true;
+    write->pinned = true;   // 因为原先的kvcache已经是传输到对应的backend了，前面拷贝构造的时候已经确定了，所以这里为true是对的
 
     Tensor *write_node = g.add_node(std::move(write));
 
