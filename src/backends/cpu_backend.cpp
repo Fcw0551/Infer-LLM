@@ -427,11 +427,8 @@ std::expected<void, std::error_code> CPUBackend::compute_mul_mat(Tensor* dst){
 std::expected<void, std::error_code> CPUBackend::compute_reshape(Tensor *dst){
     Tensor *src = dst->src[0];
 
-    if (!src || !src->data || !dst->data ||
-        src->dataType != dst->dataType ||
-        src->element_count() != dst->element_count()){
-        return std::unexpected(
-            std::make_error_code(std::errc::invalid_argument));
+    if (!src || !src->data || !dst->data || src->dataType != dst->dataType || src->element_count() != dst->element_count()){
+        return std::unexpected(std::make_error_code(std::errc::invalid_argument));
     }
 
     // 前提：输入、输出都是连续布局
