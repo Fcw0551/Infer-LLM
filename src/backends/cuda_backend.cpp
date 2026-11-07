@@ -1,6 +1,7 @@
 #ifdef INFERLLM_WITH_CUDA
 
 #include "../../include/backends/cuda_backend.hpp"
+#include <cstring>
 
 std::vector<DeviceInfo> probe_cuda_devices() {
     std::vector<DeviceInfo> devices;
@@ -189,7 +190,7 @@ std::expected<void, std::error_code> CUDABackend::compute(Graph &graph){
         // 按 op 分派
         auto r = dispatch(node);
         if (!r){
-            std::cout << "[cpu] compute failed at node: " << node->name << " op=" << (int)node->op << "\n";
+            std::cout << "[cuda] compute failed at node: " << node->name << " op=" << (int)node->op << "\n";
             return r;
         }
     }
