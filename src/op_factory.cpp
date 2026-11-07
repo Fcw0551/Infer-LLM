@@ -1,3 +1,4 @@
+#include <cstring>
 #include "../include/op_factory.hpp"
 
 // OpFactory :: function
