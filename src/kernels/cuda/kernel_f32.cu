@@ -1,11 +1,14 @@
 #ifdef INFERLLM_WITH_CUDA
-#include "../../../include/kernels/cuda/kernel_f32.hpp"
 #include <cassert>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <limits>
 #include <math_constants.h>
+#include "../../../include/kernels/cuda/kernel_f32.hpp"
+#include "../../../include/tensor.hpp"      // Tensor 的完整定义
+#include "../../../include/op_params.hpp"  // AttnParams 的定义
+#include "../../../include/util.hpp"        // INFERLLM_TENSOR_*_LOCALS 宏
 namespace CUDA_F32
 {
     // ------------------------------------------------------------------------------------------------------------------
@@ -141,13 +144,13 @@ namespace CUDA_F32
     {
         static_assert(BLOCK_SIZE > 0 && (BLOCK_SIZE & (BLOCK_SIZE - 1)) == 0);
         const int tid = threadIdx.x;
-        const int64_t row = blockIdx.x;
-        const int64_t col = blockIdx.y;
+        const int64_t n_out = blockIdx.x;
+        const int64_t n_tokens = blockIdx.y;
 
         // 当前block负责的位置
-        const float *w = w_base + col * hidden_dim;
-        const float *x = x_base + row * hidden_dim;
-        float *dst = dst_base + col * gridDim.x + row;
+        const float *w = w_base + n_out * hidden_dim;
+        const float *x = x_base + n_tokens * hidden_dim;
+        float *dst = dst_base + n_tokens * gridDim.x + n_out;
 
         // 共享内存的申请
         __shared__ float sums[BLOCK_SIZE];
@@ -155,7 +158,7 @@ namespace CUDA_F32
         float local_sum = 0.0f;
         for (int64_t i = tid; i < hidden_dim; i += BLOCK_SIZE)
         {
-            local_sum + = x[i] * w[i];
+            local_sum += x[i] * w[i];
         }
 
         sums[tid] = local_sum; // 放入共享内存，一会做归约
@@ -197,7 +200,7 @@ namespace CUDA_F32
         constexpr int THREADS = 256; // 一个block的大小
         // grid的大小就是dst的大小
         dim3 grid(static_cast<unsigned>(dims0), static_cast<unsigned>(dims1));
-        mul_mat<THREADS><<<(grid, dims1, 1), THREADS, 0, stream>>>(w_base, x_base, dst_base, dims00);
+        mul_mat<THREADS><<<grid,THREADS, 0, stream>>>(w_base, x_base, dst_base, dims00);
         return cudaGetLastError();
     }
 
@@ -312,7 +315,7 @@ namespace CUDA_F32
         {
             return cudaErrorInvalidValue;
         }
-        cudaMemcpyAsync(dst->data, src->data, src->byte_size(), cudaMemcpyDeviceToDevice, stream);
+        return cudaMemcpyAsync(dst->data, src->data, src->byte_size(), cudaMemcpyDeviceToDevice, stream);
     }
 
     // -----------------------------------------------------------------------------------------
@@ -452,7 +455,8 @@ namespace CUDA_F32
         // v[head_dim, n_heads_kv,n_tokens_kv]
         // dst[head_dim, n_heads,n_tokens_q]
 
-        if (!dst || !dst->src[0] || !dst->src[1]) return cudaErrorInvalidValue;
+        if (!dst || !dst->src[0] || !dst->src[1] || !dst->src[2])
+            return cudaErrorInvalidValue;
         Tensor *src0 = dst->src[0];
         Tensor *src1 = dst->src[1];
         Tensor *src2 = dst->src[2];
@@ -460,6 +464,7 @@ namespace CUDA_F32
         const float *q_base = static_cast<const float *>(src0->data);
         const float *k_base = static_cast<const float *>(src1->data);
         const float *v_base = static_cast<const float *>(src2->data);
+        float *dst_base = static_cast<float *>(dst->data);
 
 
         const int64_t n_tokens_q = src0->dims[2];
@@ -507,7 +512,7 @@ namespace CUDA_F32
 
 // ---------------------------------------------------------------------------------------
 
-    __global__ void add(const float *a_base, const float *b_base, float *dst_base,int len){
+    __global__ void add(const float *a_base, const float *b_base, float *dst_base,int64_t len){
         const int64_t offset = static_cast<int64_t>(blockIdx.x) * blockDim.x * 2 + threadIdx.x;
 
         // 第一个元素
@@ -548,8 +553,82 @@ namespace CUDA_F32
         return cudaGetLastError();
     }
 
-    cudaError_t compute_mul(Tensor *dst, cudaStream_t stream);
 
-    cudaError_t compute_silu(Tensor *dst, cudaStream_t stream);
+// --------------------------------------------------------------------------
+    __global__ void mul(const float *a_base, const float *b_base, float *dst_base, int64_t len){
+        const int64_t offset = static_cast<int64_t>(blockIdx.x) * blockDim.x * 2 + threadIdx.x;
+        // 第一个元素
+        if (offset < len){
+            dst_base[offset] = a_base[offset] * b_base[offset];
+        }
+
+        // 第二个元素
+        const int64_t second = offset + blockDim.x;
+        if (second < len){
+            dst_base[second] = a_base[second] * b_base[second];
+        }
+    }
+    cudaError_t compute_mul(Tensor *dst, cudaStream_t stream){
+        Tensor *src0 = dst->src[0];
+        Tensor *src1 = dst->src[1];
+
+        INFERLLM_TENSOR_BINARY_LOCALS
+
+        const float *a_base = static_cast<const float *>(src0->data);
+        const float *b_base = static_cast<const float *>(src1->data);
+        float *dst_base = static_cast<float *>(dst->data);
+
+        const int64_t len = src0->element_count();
+        if (len == 0)
+        {
+            return cudaSuccess;
+        }
+        // 配置核函数
+        constexpr unsigned THREADS = 32;
+        constexpr unsigned ELEMENTS_PER_BLOCK = THREADS * 2;
+
+        dim3 block(THREADS);
+        dim3 grid(static_cast<unsigned>((len - 1) / ELEMENTS_PER_BLOCK + 1));
+
+        mul<<<grid, block, 0, stream>>>(a_base, b_base, dst_base, len);
+
+        return cudaGetLastError();
+    }
+
+// ------------------------------------------------------------------------------------------------
+    __global__ void silu(const float* src_base,float* dst_base,int64_t width){
+        const int64_t offset = 2 * blockIdx.x * blockDim.x + threadIdx.x;
+         if (offset < width){
+            dst_base[offset] = src_base[offset] / (1.0f + expf(-src_base[offset]));
+        }
+
+        // 第二个元素
+        const int64_t second = offset + blockDim.x;
+        if (second < width){
+             dst_base[second] = src_base[second] / (1.0f + expf(-src_base[second]));
+        }
+    }
+    cudaError_t compute_silu(Tensor *dst, cudaStream_t stream){
+        Tensor* src0 = dst->src[0];
+        INFERLLM_TENSOR_UNARY_LOCALS
+
+        const float *src_base = static_cast<const float *>(src0->data);
+        float *dst_base = static_cast<float *>(dst->data);
+
+        const int64_t size = src0->element_count();
+
+        // 配置核函数
+        constexpr unsigned THREADS = 32;
+        constexpr unsigned ELEMENTS_PER_BLOCK = THREADS * 2;
+
+        dim3 block(THREADS);
+        dim3 grid(static_cast<unsigned>((size- 1) / ELEMENTS_PER_BLOCK + 1));
+
+        silu<<<grid, block, 0, stream>>>(src_base, dst_base, size);
+
+        return cudaGetLastError();
+    }
+
+// -----------------------------------------------------------------------------------
 };
 #endif // INFERLLM_WITH_CUDA
