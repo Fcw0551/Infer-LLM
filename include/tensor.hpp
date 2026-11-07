@@ -1,33 +1,16 @@
 #pragma once
 #include "util.hpp"
-#include "gguf_parser.hpp"
+#include <array>
+#include <initializer_list>
+#include <string_view>
 #include <string>
 #include <iostream>
+struct TensorInfo;
 class Backend;  //前置声明
 
 //tensor算子的定义
 struct Tensor{
-    Tensor(const TensorInfo* info)
-    :name(info->_name)
-    ,offset(info->_offset)
-    ,dataType(info->_type)
-    ,dims(info->_dims)
-    {
-        size_t i = 0;
-        int64_t size = dataType_size(dataType);
-        for (auto &e : dims)
-        {
-            if (i >= TENSOR_MAX_DIMS)
-            {
-                break;
-            }
-            dims[i++] = e;
-        }
-        strides[0] = size;
-        strides[1] = size * dims[0];
-        strides[2] = size * dims[1] * dims[0];
-        strides[3] = size * dims[2] * dims[1] * dims[0];
-    }
+    Tensor(const TensorInfo* info);
     Tensor(std::string_view name,DataType type,std::initializer_list<int64_t> shape)
     :name(std::string(name))
     ,dataType(type)

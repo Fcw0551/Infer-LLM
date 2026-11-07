@@ -1,5 +1,7 @@
 #pragma once
 #include <unordered_set>
+#include <expected>
+#include <vector>
 #include <memory>
 #include <system_error>
 #include <functional>
@@ -73,6 +75,8 @@ private:
 class GraphContext{
 public:
     GraphContext() = default;
+    // 借用 CPU 后端；其生命周期必须覆盖当前 context。
+    explicit GraphContext(Backend* cpu_backend) : _cpu_backend(cpu_backend) {}
 
     // 禁止拷贝（内部持有张量）
     GraphContext(const GraphContext &) = delete;
@@ -106,6 +110,7 @@ public:
     std::expected<KVLayerAccess*, std::error_code> acquire_kv_layer(std::size_t layer);
 
 private:
+    Backend* _cpu_backend = nullptr;
     // 输入
     Tensor *_inp_tokens = nullptr; // [n_tokens]  I32
     Tensor *_inp_pos = nullptr;    // [n_tokens]  I32

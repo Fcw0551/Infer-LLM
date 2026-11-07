@@ -22,5 +22,6 @@ test/
 #dot图
 *.dot
 
-#bench
-benchmarks
+# benchmark generated results
+benchmarks/**/results/
+__pycache__/

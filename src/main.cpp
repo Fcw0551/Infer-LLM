@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cuda_runtime_api.h>
 #include <memory>
 #include<../include/backend.hpp>
 #include<../include/gguf_parser.hpp>
@@ -40,13 +41,20 @@ int main(int argc, char** argv){
     reg.probe_all();
     // 打印
     reg.print();
-    // 实例化设备 这里选择cpu先，先把cpu跑起来
+    // CUDA 优先；保留 CPU 用于输入、embedding 和权重放置兜底
     PoolConfig pool_cfg = { 
                             .weights = Strategy::NAIVE,
                             .activation = Strategy::NAIVE,
                             .kvcache = Strategy::NAIVE,
     };
     std::vector<Backend*> bc;
+    auto gpu_result = reg.create("cuda:0", pool_cfg);
+    if (!gpu_result) {
+        std::cerr << "创建 CUDA 后端失败：" << gpu_result.error().message() << '\n';
+        return 1;
+    }
+    std::unique_ptr<Backend> gpu_backend = std::move(*gpu_result);
+    bc.push_back(gpu_backend.get());
     auto result=reg.create("cpu",pool_cfg);
     if(!result){
         const auto &ec = result.error();
@@ -59,17 +67,7 @@ int main(int argc, char** argv){
     std::unique_ptr<Backend> cpu_backend = std::move(*result);
     bc.push_back(cpu_backend.get());
 
-    // ---------------加载backend完成，并且只是指定了cpu-------------
-    //     name:         cuda:0
-    // DeviceType:   CUDA
-    // memory_bytes: 7441743872
-    // name:         cpu
-    // DeviceType:   CPU
-    // memory_bytes: 5772193792
-    // cpu 实例化中 device_id: 0
-    // [cpu] default threads = 8
-    // cpu 析构中 device_id: 0
-
+    std::cout << "推理设备优先级：cuda:0 → cpu\n";
 
     // ---------------gguf的解析-----------------
     auto gguf=GGUFContext::load("/home/wcf/Infer-LLM/models/Qwen3-0.6B-F32.gguf");
@@ -199,9 +197,8 @@ int main(int argc, char** argv){
         .v_type = GGML_TYPE_F32,
     };
     std::vector<KVLayerSpec> kv_layers(*n_layers, layer_spec);
-    // 当前 main 只注册了一个 CPU 实例，全部层的权重与 KV 都在这个实例上
-    // TODO：多设备时改用模型放置结果中的逐层 Backend，不能全部填同一设备
-    std::vector<Backend*> kv_backends(*n_layers, cpu_backend.get());
+    // 当前单 GPU 模式：全部 KV 常驻 cuda:0，跨设备输入由调度器复制。
+    std::vector<Backend*> kv_backends(*n_layers, gpu_backend.get());
     KVCacheConfig kv_config{
         .layers = *n_layers,
         .max_tokens_per_sequence = cache_capacity,
@@ -216,7 +213,7 @@ int main(int argc, char** argv){
     // ----- 创建跨轮复用的计算图上下文和输入张量 ------
     std::vector<int32_t> positions;
     // context 跨轮复用 RoPE 表；输入数据仍归上面的 vector 所有。
-    GraphContext graph_ctx;
+    GraphContext graph_ctx(cpu_backend.get());
     Tensor *input_tokens = graph_ctx.make_tensor("input_tokens", DataType::GGML_TYPE_I32, {1});
     input_tokens->tensorRole = TensorRole::TNESOR_ROLE_INPUT;
     input_tokens->backend = cpu_backend.get();
@@ -241,7 +238,7 @@ int main(int argc, char** argv){
     // 前者只借用 manager、保存 id；建图时获取的各层 access 由 context 保存。
     // 后者逐个 release_layer 并清空访问列表，空列表重复调用应成功
     // ----- 统一处理错误退出时的访问归还和序列释放 ------
-    // 当前只使用同步 CPU；以后异步执行必须先等待访问完成再归还。
+    // 每轮在归还 KV 访问前等待 GPU 完成，包括执行失败的路径。
     struct KVRequestScope {
         KVCacheManager& manager;
         GraphContext& context;
@@ -325,8 +322,14 @@ int main(int argc, char** argv){
                 return 1;
             }
             // ----- 执行本轮计算图 ------
-            if (auto r = sched.execute(g); !r) {
-                std::cerr << "执行失败：" << r.error().message() << '\n';
+            auto execution_result = sched.execute(g);
+            const cudaError_t sync_error = cudaDeviceSynchronize();
+            if (!execution_result) {
+                std::cerr << "执行失败：" << execution_result.error().message() << '\n';
+                return 1;
+            }
+            if (sync_error != cudaSuccess) {
+                std::cerr << "GPU 执行失败：" << cudaGetErrorString(sync_error) << '\n';
                 return 1;
             }
             // ----- 归还本轮 KV 访问并提交有效长度 ------

@@ -35,12 +35,15 @@ add_library(inferllm STATIC
     src/op_factory.cpp
     src/sampler.cpp
     src/scheduler.cpp
+    src/tensor.cpp
     src/util.cpp
     
 )
 
 target_include_directories(inferllm PUBLIC include)
-target_compile_options(inferllm PRIVATE -Wall -Wextra)
+target_compile_options(inferllm PRIVATE
+    "$<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra>"
+)
 
 find_path(PCRE2_INCLUDE_DIR pcre2.h REQUIRED)
 find_library(PCRE2_LIBRARY NAMES pcre2-8 REQUIRED)
@@ -50,25 +53,22 @@ target_link_libraries(inferllm PRIVATE ${PCRE2_LIBRARY} ICU::uc)
 
 
 if(INFERLLM_WITH_CUDA)
-    # 查找 CUDA Toolkit
+    enable_language(CUDA)
     find_package(CUDAToolkit REQUIRED)
 
-    # 把 CUDA 的源文件加入编译
-    target_sources(inferllm PRIVATE
-        src/backends/cuda_backend.cpp
-        # src/backends/cuda_kernels.cu    # 将来写 kernel 时加这里
+    set_target_properties(inferllm PROPERTIES
+        CUDA_STANDARD 20
+        CUDA_STANDARD_REQUIRED ON
+        CUDA_ARCHITECTURES 89
     )
 
-    # 链接 CUDA Runtime
-    target_link_libraries(inferllm PRIVATE CUDA::cudart)
+    target_sources(inferllm PRIVATE
+        src/kernels/cuda/kernel_f32.cu
+    )
 
-    # 定义宏，让 #ifdef INFERLLM_WITH_CUDA 生效
+    target_link_libraries(inferllm PUBLIC CUDA::cudart)
     target_compile_definitions(inferllm PRIVATE INFERLLM_WITH_CUDA)
-
-    #让 .cu 文件找到 include 目录
-    target_include_directories(inferllm PRIVATE include)
 endif()
-
 
 
 # dot 图的输出目录：和 include/ src/ 同级的 models_dot/（绝对路径，所以在哪个目录跑都一样）

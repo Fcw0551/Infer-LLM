@@ -1,4 +1,5 @@
 #include "../include/graph.hpp"
+#include "../include/backend.hpp"
 #include "../include/kvcache/kvcacheManager.hpp"
 #include <new>
 //------Graph--------
@@ -89,6 +90,9 @@ void Graph::build_topo_order(Tensor* t){
 // RoPE 频率表缓存
 // 返回 [n_ctx, head_dim/2] 的 θ 表，每行是 pos * freq_i
 std::expected<Tensor *, std::error_code> GraphContext::get_rope_theta_table(float theta_base, uint32_t head_dim, uint32_t n_ctx){
+    if (!_cpu_backend || !_cpu_backend->is_host()) {
+        return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+    }
     RopeKey key{theta_base, head_dim, n_ctx};
     auto it = _rope_theta_cache.find(key);
     if (it != _rope_theta_cache.end())
@@ -98,10 +102,12 @@ std::expected<Tensor *, std::error_code> GraphContext::get_rope_theta_table(floa
 
     // 创建张量[half, n_ctx]
     Tensor *t = make_tensor("rope_theta",DataType::GGML_TYPE_F32, {half, n_ctx, 1, 1});
+    // 数据由 CPU 的 new[] 分配，标记真实来源以便调度器插入跨设备复制
+    t->backend = _cpu_backend;
+    t->device = DeviceType::CPU;
 
     // 分配 data 纯数据块
-    auto buffer = std::unique_ptr<float[]>(
-        new (std::nothrow) float[static_cast<size_t>(half) * n_ctx]);
+    auto buffer = std::unique_ptr<float[]>(new (std::nothrow) float[static_cast<size_t>(half) * n_ctx]);
     if (!buffer){
         return std::unexpected(std::make_error_code(std::errc::not_enough_memory));
     }
