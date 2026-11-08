@@ -149,8 +149,7 @@ std::expected<void, std::error_code>  GGUFContext::parser_header( std::span<cons
     return {};
 }
 // 读取单个标量 KV 值
-std::expected<MetaScalar, std::error_code>
-GGUFContext::read_meta_scalar(std::span<const std::byte>& cur, GGUFType type) {
+std::expected<MetaScalar, std::error_code> GGUFContext::read_meta_scalar(std::span<const std::byte>& cur, GGUFType type) {
     switch (type) {
         case GGUF_TYPE_UINT8:   { auto v = read_pod<uint8_t>(cur);  if (!v) return std::unexpected(v.error()); return MetaScalar{*v}; }
         case GGUF_TYPE_INT8:    { auto v = read_pod<int8_t>(cur);   if (!v) return std::unexpected(v.error()); return MetaScalar{*v}; }
