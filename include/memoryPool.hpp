@@ -23,8 +23,7 @@ public:
         void *ptr = std::malloc(bytes);
 
         if (ptr == nullptr){
-            return std::unexpected(
-                std::make_error_code(std::errc::not_enough_memory));
+            return std::unexpected(std::make_error_code(std::errc::not_enough_memory));
         }
 
         return ptr;
