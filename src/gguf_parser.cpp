@@ -170,8 +170,7 @@ std::expected<MetaScalar, std::error_code> GGUFContext::read_meta_scalar(std::sp
 }
 
 // 读取一个 KV 值：标量或数组
-std::expected<MetaValue, std::error_code>
-GGUFContext::read_meta_value(std::span<const std::byte>& cur, GGUFType type) {
+std::expected<MetaValue, std::error_code> GGUFContext::read_meta_value(std::span<const std::byte>& cur, GGUFType type) {
     MetaValue mv;
     mv.type = type;
 
