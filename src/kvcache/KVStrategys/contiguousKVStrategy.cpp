@@ -7,7 +7,7 @@
 // --------------- 负责维护 token → StorageId 的映射状态 ----------------------
 
 
-// 这里还要进行连续预先分配内存
+// 初始化
 std::expected<void, std::error_code> ContiguousKVStrategy::init(std::span<const KVLayerSpec> layers, std::span<Backend *const> backend_layer, const KVCacheConfig &config){
     if (!_storage || layers.size() != backend_layer.size() || config.layers != layers.size()){
         return std::unexpected(std::make_error_code(std::errc::invalid_argument));

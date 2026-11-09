@@ -21,7 +21,7 @@ public:
     ContiguousKVStrategy(const ContiguousKVStrategy &) = delete;
     ContiguousKVStrategy &operator=(const ContiguousKVStrategy &) = delete;
 
-    // 这里还要进行连续预先分配内存
+    // 初始化成员变量
     std::expected<void, std::error_code> init(std::span<const KVLayerSpec> layers, std::span<Backend *const> backend_layer, const KVCacheConfig &config);
     
     // 创建序列
