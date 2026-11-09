@@ -64,7 +64,7 @@ std::expected<void, std::error_code> ActivationManager::plan(const Graph &g){
             return std::unexpected(std::make_error_code(std::errc::invalid_argument));
         auto [it, inserted] = states.try_emplace(backend);
         if (inserted){
-            it->second.block_index = _plan.blocks.size();
+            it->second.block_index = _plan.blocks.size();       // 这里取 size() 是为了得到即将插入的元素的下标
             _plan.blocks.push_back({backend, 0});
         }
     }
