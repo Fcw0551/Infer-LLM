@@ -1,0 +1,19 @@
+{
+  "git": "9805e5d885ac6e07b9f2575c4581d632ddd42d1c",
+  "git_status": "?? benchmarks/cuda/run_matrix.py",
+  "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU, 581.42, 8.9, 8188 MiB",
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2024 NVIDIA Corporation\nBuilt on Tue_Oct_29_23:50:19_PDT_2024\nCuda compilation tools, release 12.6, V12.6.85\nBuild cuda_12.6.r12.6/compiler.35059454_0",
+  "gcc": "g++-13 (Ubuntu 13.1.0-8ubuntu1~20.04.2) 13.1.0\nCopyright (C) 2023 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+  "kernel": "6.18.54.1-microsoft-standard-WSL2",
+  "os_release": "NAME=\"Ubuntu\"\nVERSION=\"20.04.3 LTS (Focal Fossa)\"\nID=ubuntu\nID_LIKE=debian\nPRETTY_NAME=\"Ubuntu 20.04.3 LTS\"\nVERSION_ID=\"20.04\"\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nVERSION_CODENAME=focal\nUBUNTU_CODENAME=focal\n",
+  "model_bytes": 2390150816,
+  "model_sha256": "bb38dab890935b8dbd2cb57e68669f39c34ff54dad07ec0dcd80049071bbcf80",
+  "backend": "cuda:0 + CPU embedding",
+  "build": "Release",
+  "architecture": "89",
+  "workers": 8,
+  "warmup": 1,
+  "repetitions": 3,
+  "output_tokens": 128,
+  "gpu_sampling": "whole GPU, 1 second intervals, includes warmup; not process allocation peak"
+}

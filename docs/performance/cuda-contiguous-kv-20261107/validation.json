@@ -1,0 +1,11 @@
+{
+  "matrix_exit_code": 0,
+  "formal_requests": 12,
+  "warmup_requests": 4,
+  "cli_tests_passed": 6,
+  "source_hashes_unchanged": true,
+  "smoke_cpu_cuda_checksum": "39812",
+  "numerical_scope": "P=4,N=2 token checksum only; no full logits/operator comparison",
+  "binary_sha256": "5927a38c36e3f288eec2a1779c2065b9aac349f1f222961e5c838b2a6db9cd4f",
+  "report_relative_links_valid": true
+}

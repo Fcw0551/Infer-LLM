@@ -1,0 +1,25 @@
+Backend: cpu (CPU embedding; CUDA synchronized when enabled)
+CPU: 13th Gen Intel(R) Core(TM) i7-13620H
+Model: /home/wcf/Infer-LLM/models/Qwen3-0.6B-F32.gguf
+Engine git: 258e73cc39f1b2f58e18d46697ae0d809f42bbe8
+Profile: custom
+Build: Release; compiler: 13.1.0
+Threads: 8 (explicit); input: 4; generated: 2; warmup: 0; repeats: 1
+Setup: 0.043 s（不计入测试）
+固定合成输入，完成同步后计时；pg 使用 KV Cache；首轮处理 P 个输入，随后每轮只处理 1 个 token。
+测试 pg 1/1
+进度 1/2，已用 0.49 s
+进度 2/2，已用 0.584208 s
+  wall=584.291 ms; build=4.552 ms; execute=578.720 ms; sample=0.735 ms; throughput=3.423 token/s
+pg-kv 汇总（1 轮，均值 ± 样本标准差）
+  整轮吞吐量 token/s: 3.423
+  建图/拓扑 ms: 4.552
+  调度执行 ms: 578.720
+  读取 logits/采样 ms: 0.735
+  清理 ms: 0.137
+  TTFT ms（引擎）: 490.000
+  TPOT / Decode ms/token: 94.207
+  请求总耗时 s（至最后 token）: 0.584
+  进程峰值 RSS MiB: 2335.289
+  首 token 后生成 token/s（KV cache）: 10.615
+CSV: /tmp/inferllm-cpu-smoke.csv

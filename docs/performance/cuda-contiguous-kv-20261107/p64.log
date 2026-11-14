@@ -1,0 +1,64 @@
+Backend: cuda:0 (CPU embedding; CUDA synchronized when enabled)
+CPU: 13th Gen Intel(R) Core(TM) i7-13620H
+Model: /home/wcf/Infer-LLM/models/Qwen3-0.6B-F32.gguf
+Engine git: 258e73cc39f1b2f58e18d46697ae0d809f42bbe8
+Profile: p64
+Build: Release; compiler: 13.1.0
+Threads: 8 (explicit); input: 64; generated: 128; warmup: 1; repeats: 3
+Setup: 0.603 s（不计入测试）
+固定合成输入，完成同步后计时；pg 使用 KV Cache；首轮处理 P 个输入，随后每轮只处理 1 个 token。
+预热 pg 1/1
+进度 1/128，已用 0.439179 s
+进度 16/128，已用 0.711844 s
+进度 32/128，已用 1.00219 s
+进度 48/128，已用 1.29492 s
+进度 64/128，已用 1.58497 s
+进度 80/128，已用 1.86813 s
+进度 96/128，已用 2.15659 s
+进度 112/128，已用 2.44604 s
+进度 128/128，已用 2.73863 s
+测试 pg 1/3
+进度 1/128，已用 0.430806 s
+进度 16/128，已用 0.689368 s
+进度 32/128，已用 0.961767 s
+进度 48/128，已用 1.24363 s
+进度 64/128，已用 1.52711 s
+进度 80/128，已用 1.83459 s
+进度 96/128，已用 2.12729 s
+进度 112/128，已用 2.42378 s
+进度 128/128，已用 2.72022 s
+  wall=2723.548 ms; build=19.932 ms; execute=2637.173 ms; sample=49.517 ms; throughput=46.998 token/s
+测试 pg 2/3
+进度 1/128，已用 0.419238 s
+进度 16/128，已用 0.677981 s
+进度 32/128，已用 0.951298 s
+进度 48/128，已用 1.22875 s
+进度 64/128，已用 1.5137 s
+进度 80/128，已用 1.80429 s
+进度 96/128，已用 2.09111 s
+进度 112/128，已用 2.37919 s
+进度 128/128，已用 2.67935 s
+  wall=2683.295 ms; build=19.603 ms; execute=2598.538 ms; sample=47.800 ms; throughput=47.703 token/s
+测试 pg 3/3
+进度 1/128，已用 0.41955 s
+进度 16/128，已用 0.682751 s
+进度 32/128，已用 0.963323 s
+进度 48/128，已用 1.24248 s
+进度 64/128，已用 1.52383 s
+进度 80/128，已用 1.80891 s
+进度 96/128，已用 2.09597 s
+进度 112/128，已用 2.3859 s
+进度 128/128，已用 2.68332 s
+  wall=2687.412 ms; build=19.485 ms; execute=2600.266 ms; sample=49.143 ms; throughput=47.629 token/s
+pg-kv 汇总（3 轮，均值 ± 样本标准差）
+  整轮吞吐量 token/s: 47.443 ± 0.388
+  建图/拓扑 ms: 19.673 ± 0.232
+  调度执行 ms: 2611.992 ± 21.824
+  读取 logits/采样 ms: 48.820 ± 0.903
+  清理 ms: 8.022 ± 0.172
+  TTFT ms（引擎）: 423.198 ± 6.590
+  TPOT / Decode ms/token: 17.883 ± 0.126
+  请求总耗时 s（至最后 token）: 2.694 ± 0.023
+  进程峰值 RSS MiB: 2439.336
+  首 token 后生成 token/s（KV cache）: 55.922 ± 0.392
+CSV: /home/wcf/Infer-LLM/docs/performance/cuda-contiguous-kv-20261107/p64.csv

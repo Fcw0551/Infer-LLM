@@ -1,0 +1,12 @@
+Waiting for idle system: p32
+Running p32: 1 warmup + 3 measured requests, 128 outputs each
+Finished p32: {"exit_code": 0, "seconds": 11.123355053000012, "min_mem_available_mib": 6072.96484375, "max_swap_used_mib": 0.0, "swapin_pages": 0, "swapout_pages": 0, "memory_full_stall_ms": 0.0, "memory_some_stall_ms": 0.0, "io_full_stall_ms": 6.573, "external_cpu_percent": 1.329919635872271, "max_gpu_util_percent": 89.0, "max_gpu_memory_used_mib": 3479.0, "max_gpu_temperature_c": 59.0, "max_gpu_power_w": 53.67, "gpu_memory_before_mib": 932.0, "pressure_flag": false}
+Waiting for idle system: p64
+Running p64: 1 warmup + 3 measured requests, 128 outputs each
+Finished p64: {"exit_code": 0, "seconds": 12.074161102999994, "min_mem_available_mib": 6059.875, "max_swap_used_mib": 0.0, "swapin_pages": 0, "swapout_pages": 0, "memory_full_stall_ms": 0.0, "memory_some_stall_ms": 0.0, "io_full_stall_ms": 6.664, "external_cpu_percent": 1.092271543786118, "max_gpu_util_percent": 99.0, "max_gpu_memory_used_mib": 3470.0, "max_gpu_temperature_c": 61.0, "max_gpu_power_w": 57.97, "gpu_memory_before_mib": 1013.0, "pressure_flag": false}
+Waiting for idle system: p128
+Running p128: 1 warmup + 3 measured requests, 128 outputs each
+Finished p128: {"exit_code": 0, "seconds": 18.066644136999997, "min_mem_available_mib": 6023.71484375, "max_swap_used_mib": 0.0, "swapin_pages": 0, "swapout_pages": 0, "memory_full_stall_ms": 0.0, "memory_some_stall_ms": 0.0, "io_full_stall_ms": 19.771, "external_cpu_percent": 1.1615498276145133, "max_gpu_util_percent": 98.0, "max_gpu_memory_used_mib": 3475.0, "max_gpu_temperature_c": 62.0, "max_gpu_power_w": 63.13, "gpu_memory_before_mib": 901.0, "pressure_flag": false}
+Waiting for idle system: p256
+Running p256: 1 warmup + 3 measured requests, 128 outputs each
+Finished p256: {"exit_code": 0, "seconds": 21.828460154, "min_mem_available_mib": 6040.25390625, "max_swap_used_mib": 0.0, "swapin_pages": 0, "swapout_pages": 0, "memory_full_stall_ms": 0.0, "memory_some_stall_ms": 0.0, "io_full_stall_ms": 13.788, "external_cpu_percent": 1.3929618768328447, "max_gpu_util_percent": 100.0, "max_gpu_memory_used_mib": 3723.0, "max_gpu_temperature_c": 67.0, "max_gpu_power_w": 69.99, "gpu_memory_before_mib": 902.0, "pressure_flag": false}
