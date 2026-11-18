@@ -10,6 +10,15 @@
 #include "../backend.hpp"
 #include "../util.hpp"
 
+// 访问需求不指定源介质；Storage 根据 ID 对应的副本状态选择有效数据源。
+// 当前连续对象使用对象内 token 坐标；有效历史由上层事务状态确定。
+struct KVObjectAccessRequest {
+    StorageId id = kInvalidStorageId;
+    std::size_t layer = 0;
+    std::size_t history_tokens = 0;
+    TokenRange writable;
+};
+
 struct KVStorageObject{
     StorageId id = kInvalidStorageId;
     Backend *backend = nullptr;
@@ -54,7 +63,7 @@ public:
 protected:
     // 仅在 active_users == 0 时调用。具体实现完成本地准备或迁移，更新 object
     // 返回成功时数据已就绪；不得删除该状态或改变 ID、layer、计数
-    virtual std::expected<void, std::error_code> prepare_object(StorageId id, std::size_t layer) = 0;
+    virtual std::expected<void, std::error_code> prepare_object(const KVObjectAccessRequest& request) = 0;
 
     // 仅在计数为0时调用；归还实际内存/池块。基类随后删除 _states 条目
     virtual void destroy_object(StorageId id) noexcept = 0;
