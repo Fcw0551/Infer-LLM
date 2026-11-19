@@ -25,3 +25,6 @@ test/
 # benchmark generated results
 benchmarks/**/results/
 __pycache__/
+
+#
+experiments
