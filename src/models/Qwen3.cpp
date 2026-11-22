@@ -41,7 +41,8 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 	ap.head_dim = n_embd_head_k;					  // 128
 	ap.scale = 1.0f / std::sqrt(float(n_embd_head_k));  // 1/sqrt(128)
 	ap.causal = true;									      // Prefill 阶段开启
-	ap.sliding_window = 0;								      // Qwen3 这里不需要，就填 0
+	ap.sliding_window = g_ctx.attention_window;			    // 保留最近多少个 Token 的 KV
+	ap.attention_sink_tokens = g_ctx.attention_sink_tokens; // 额外保留最开头多少个 Token 的 KV
 
 	for (size_t i = 0; i < _hparams.n_layer; i++){
 		// transfomer
