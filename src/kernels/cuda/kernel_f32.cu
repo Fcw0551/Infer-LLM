@@ -9,8 +9,18 @@
 #include "../../../include/tensor.hpp"      // Tensor 的完整定义
 #include "../../../include/op_params.hpp"  // AttnParams 的定义
 #include "../../../include/util.hpp"        // INFERLLM_TENSOR_*_LOCALS 宏
+#ifdef INFERLLM_QUEST_EXPERIMENT
+#include <algorithm>
+#include <cstdio>
+#include <numeric>
+#include <vector>
+#endif
+
 namespace CUDA_F32
 {
+#ifdef INFERLLM_QUEST_EXPERIMENT
+#include "../../../experiments/sparse-attention-accuracy/quest/probe.cuh"
+#endif
     // ------------------------------------------------------------------------------------------------------------------
 
     template <int BLOCK_SIZE>
@@ -328,7 +338,7 @@ namespace CUDA_F32
     // ------------------------------------------------------------------------------------
 
     template <int BLOCK_SIZE>
-    __global__ void score(const float *q_base, const float *k_base, float *scores, int64_t n_tokens_q, int64_t n_tokens_kv, int64_t n_heads, int64_t n_heads_kv,int64_t head_dim,int64_t group_size, int64_t n_past, float scale){
+    __global__ void score(const float *q_base, const float *k_base, float *scores, int64_t n_tokens_q, int64_t n_tokens_kv, int64_t n_heads, int64_t n_heads_kv,int64_t head_dim,int64_t group_size, int64_t n_past, float scale, int64_t window, int64_t sink){
         static_assert(BLOCK_SIZE > 0 && (BLOCK_SIZE & (BLOCK_SIZE - 1)) == 0);
         // 使用共享内存 + 局部变量（防止重复的读取dst）
         int tid = threadIdx.x;
@@ -343,7 +353,8 @@ namespace CUDA_F32
         const int64_t kv_head = s_h / group_size;
 
         // 同一个 block 的判断一致，可以在归约同步前整体返回
-        if (s_x > n_past + s_y){
+        const int64_t query = n_past + s_y;
+        if (s_x > query || (window && s_x >= sink && s_x <= query - window)){
             if (tid == 0){
                 scores[row] = -CUDART_INF_F;
             }
@@ -489,13 +500,23 @@ namespace CUDA_F32
         constexpr unsigned THREADS = 32;
         dim3 block(THREADS);
         dim3 grid(static_cast<unsigned>(score_count));
-        score<THREADS><<<grid, block, 0, stream>>>(q_base, k_base, scores,n_tokens_q, n_tokens_kv, n_heads, n_heads_kv, head_dim, group_size,static_cast<int64_t>(p.n_ctx), scale);
+        score<THREADS><<<grid, block, 0, stream>>>(q_base, k_base, scores,n_tokens_q, n_tokens_kv, n_heads, n_heads_kv, head_dim, group_size,static_cast<int64_t>(p.n_ctx), scale,
+            p.sliding_window, p.attention_sink_tokens);
         cudaError_t err = cudaGetLastError();
+#ifdef INFERLLM_QUEST_EXPERIMENT
+        if (err == cudaSuccess && n_tokens_q == 1 && quest_probe::block_size)
+            err = quest_probe::select(q_base, k_base, scores, n_tokens_kv, n_heads, n_heads_kv, head_dim, stream);
+#endif
         // 一行一个softmax  所以开的个数就等于头数*行数即可
         if (err == cudaSuccess){
             softmax<THREADS><<<n_heads * n_tokens_q, block, 0, stream>>>(scores, dst_base, v_base, n_heads, n_heads_kv, head_dim, n_tokens_q, n_tokens_kv, group_size);
             err = cudaGetLastError();
         }
+
+#ifdef INFERLLM_QUEST_EXPERIMENT
+        if (err == cudaSuccess && n_tokens_q == 1)
+            err = quest_probe::capture(q_base, k_base, scores, n_tokens_kv, n_heads, n_heads_kv, head_dim, stream);
+#endif
 
         // 等待已提交的任务结束，再清理 scores
         // 即使第二次启动失败，也要考虑第一次已经提交的任务
