@@ -17,5 +17,6 @@ struct AttnParams {
     uint32_t sliding_window = 0; // 0 表示禁用
     
     // 预留对齐
-    uint32_t _pad[2] = {0, 0};
+    uint32_t attention_sink_tokens = 0;
+    uint32_t _pad = 0;
 };
