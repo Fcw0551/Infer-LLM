@@ -75,6 +75,8 @@ private:
 class GraphContext{
 public:
     GraphContext() = default;
+    uint32_t attention_window = 0;
+    uint32_t attention_sink_tokens = 0;
     // 借用 CPU 后端；其生命周期必须覆盖当前 context。
     explicit GraphContext(Backend* cpu_backend) : _cpu_backend(cpu_backend) {}
 
