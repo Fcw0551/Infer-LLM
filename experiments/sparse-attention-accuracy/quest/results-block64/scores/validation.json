@@ -1,0 +1,132 @@
+[
+  {
+    "sample": "106",
+    "prompt_tokens": "3207",
+    "document_tokens": "3160",
+    "model_context": "40960",
+    "stratum": "short",
+    "source_id": "635ad5e3696e0d297f3ea8909d42975a5c1eb49a7f4a8466",
+    "question": "What models were used for dialect identification?",
+    "answers": [
+      "BERT, RoBERTa, ELECTRA, GPT-2, and XLM-RoBERTa."
+    ],
+    "predictions": {
+      "dense": "The models used for dialect identification are XLM-RoBERTa, BERT, ELECTRA, GPT-2",
+      "b256": "The models used for dialect identification were the two-stage pipeline, which includes language classification and dialect classification.",
+      "b512": "The models used for dialect identification were XLM-RoBERTa, BERT, and ELECTRA.",
+      "b1024": "The models used for dialect identification are XLM-RoBERTa, BERT, ELECTRA, GPT-2",
+      "b2048": "The models used for dialect identification are BERT, RoBERTa, and XLM-RoBERTa."
+    },
+    "f1": {
+      "dense": 50.0,
+      "b256": 9.523809523809524,
+      "b512": 50.0,
+      "b1024": 50.0,
+      "b2048": 50.0
+    }
+  },
+  {
+    "sample": "011",
+    "prompt_tokens": "6577",
+    "document_tokens": "6520",
+    "model_context": "40960",
+    "stratum": "medium",
+    "source_id": "5a18017502d827b72fc74d91f13f6f14193b4964c3420e47",
+    "question": "How is the vacuum processing system configured in terms of the arrangement of the vacuum processing apparatus?",
+    "answers": [
+      "Multiple vacuum processing apparatuses are arranged in parallel."
+    ],
+    "predictions": {
+      "dense": "The vacuum processing system is configured with a plurality of cassette tables and cassette stands, a vacuum loader with a conveying device,",
+      "b256": "The vacuum processing system is configured with a vacuum processing apparatus that includes a conveyor system for transporting the sample.",
+      "b512": "The vacuum processing system is configured with a vacuum processing apparatus that includes a vacuum processing chamber, a conveyor, and a conveyor",
+      "b1024": "The vacuum processing system is configured with a vacuum processing chamber that is symmetrically positioned around the axis line, with two et",
+      "b2048": "The vacuum processing system is configured with a T-shaped arrangement, where the vacuum processing apparatus is connected to the cassette via a"
+    },
+    "f1": {
+      "dense": 15.384615384615385,
+      "b256": 16.666666666666664,
+      "b512": 16.0,
+      "b1024": 14.814814814814813,
+      "b2048": 16.0
+    }
+  },
+  {
+    "sample": "139",
+    "prompt_tokens": "7773",
+    "document_tokens": "7722",
+    "model_context": "40960",
+    "stratum": "medium",
+    "source_id": "33bfe67a3d40e71a5e5351ea5db4ea55df61a018d071074b",
+    "question": "What is the purpose of the baseline in the layout procedure?",
+    "answers": [
+      "The baseline is used as a reference for the mid point of the firewall for the developed side panel."
+    ],
+    "predictions": {
+      "dense": "The purpose of the baseline in the layout procedure is to provide a reference for the top longeron.",
+      "b256": "The purpose of the baseline in the layout procedure is to provide a reference point for the building process.",
+      "b512": "The purpose of the baseline in the layout procedure is to serve as a reference line for the top longeron.",
+      "b1024": "The purpose of the baseline in the layout procedure is to provide a reference for the top longeron measurements.",
+      "b2048": "The purpose of the baseline in the layout procedure is to provide a reference for the top longeron measurements."
+    },
+    "f1": {
+      "dense": 37.03703703703704,
+      "b256": 42.857142857142854,
+      "b512": 41.37931034482759,
+      "b1024": 35.714285714285715,
+      "b2048": 35.714285714285715
+    }
+  },
+  {
+    "sample": "088",
+    "prompt_tokens": "11471",
+    "document_tokens": "11409",
+    "model_context": "40960",
+    "stratum": "long",
+    "source_id": "583c9765ccee578fbc4e86090b48ca54163aa00fd5911cfe",
+    "question": "What is the average magnetic moment per column in Ge$_{1-x}$Mn$_{x}$ films?",
+    "answers": [
+      "1425 $\\mu_{B}$."
+    ],
+    "predictions": {
+      "dense": "The average magnetic moment per column in Ge$_{1-x}$Mn$_{x}$ films is approximately 1",
+      "b256": "The average magnetic property of Ge$_{1-x}$Mn$_x$ films is such that they consist of magnetic",
+      "b512": "The average magnetic moment in Ge$_{1-x}$Mn$_x$ films is isotropic.",
+      "b1024": "The average magnetic moment per Mn-rich nanocolumn in Ge$_{1-x}$Mn$_{x}$ films",
+      "b2048": "The average magnetic moment per column in Ge$_{1-x}$Mn$_{x}$ films is approximately 1"
+    },
+    "f1": {
+      "dense": 0.0,
+      "b256": 0.0,
+      "b512": 0.0,
+      "b1024": 0.0,
+      "b2048": 0.0
+    }
+  },
+  {
+    "sample": "143",
+    "prompt_tokens": "8723",
+    "document_tokens": "8671",
+    "model_context": "40960",
+    "stratum": "long",
+    "source_id": "a8da0d2585bb54d571a2ab4a539b61eef56b5e271692be42",
+    "question": "Who is responsible for carrying out the functions assigned under the act?",
+    "answers": [
+      "The Director of Town and Country Planning is responsible for carrying out the functions assigned under the act."
+    ],
+    "predictions": {
+      "dense": "The Director of Town and Country Planning.",
+      "b256": "The Town and Country Planning Act, 1977, and the Town and Country Planning Rules, 19",
+      "b512": "The answer is: The Director of Town and Country Planning.",
+      "b1024": "The answer is: The Director of Town and Country Planning.",
+      "b2048": "The answer is: The Director of Town and Country Planning."
+    },
+    "f1": {
+      "dense": 57.14285714285714,
+      "b256": 35.714285714285715,
+      "b512": 60.86956521739131,
+      "b1024": 60.86956521739131,
+      "b2048": 60.86956521739131
+    }
+  }
+]

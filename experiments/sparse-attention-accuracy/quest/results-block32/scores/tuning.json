@@ -1,0 +1,262 @@
+[
+  {
+    "sample": "071",
+    "prompt_tokens": "4960",
+    "document_tokens": "4909",
+    "model_context": "40960",
+    "stratum": "short",
+    "source_id": "67dd297408f3d52f22ede88df0b62644dac86da77f009e71",
+    "question": "When did Simon English become the leader of the National Party?",
+    "answers": [
+      "October 2001."
+    ],
+    "predictions": {
+      "dense": "12 December 2016.",
+      "b256": "In November 2003, Simon William English became the leader of the National Party.",
+      "b512": "27 February 2018.",
+      "b1024": "1997.",
+      "b2048": "12 December 2016."
+    },
+    "f1": {
+      "dense": 0.0,
+      "b256": 0.0,
+      "b512": 0.0,
+      "b1024": 0.0,
+      "b2048": 0.0
+    }
+  },
+  {
+    "sample": "067",
+    "prompt_tokens": "1362",
+    "document_tokens": "1311",
+    "model_context": "40960",
+    "stratum": "short",
+    "source_id": "22034e095a602824678c4028e6f605919ce520270dc06089",
+    "question": "What is the scaling form for the alternative order parameter O?",
+    "answers": [
+      "O(t, L_{\\parallel}; S_\\Delta) = L_{\\parallel}^{-\\beta/[\\nu(1+\\Delta)]} \\tilde f_O(t/L_{\\parallel}^{z/(1+\\Delta)}; S_\\Delta)."
+    ],
+    "predictions": {
+      "dense": "The scaling form for the alternative order parameter $ O $ is given by Eq. \\eqref{eq:Oscaling",
+      "b256": "$O \\sim t^{\\alpha} L_\\parallel^{-1/2}$",
+      "b512": "$O \\sim t^{\\alpha} L_\\parallel^{-1/2}$",
+      "b1024": "The scaling form for the alternative order parameter $ O $ is given by Eq. \\eqref{eq:Oscaling",
+      "b2048": "The scaling form for the alternative order parameter $ O $ is given by Eq. \\eqref{eq:Oscaling"
+    },
+    "f1": {
+      "dense": 0.0,
+      "b256": 0.0,
+      "b512": 0.0,
+      "b1024": 0.0,
+      "b2048": 0.0
+    }
+  },
+  {
+    "sample": "030",
+    "prompt_tokens": "1852",
+    "document_tokens": "1789",
+    "model_context": "40960",
+    "stratum": "short",
+    "source_id": "3074f07df75f95b421d8871cb9f6448e130ad7d948b137b8",
+    "question": "How does the infall rate and gas density in the magnetized model compare to non-magnetized accretion?",
+    "answers": [
+      "Infall rate is 2-5 times smaller and gas density is 2-5 times smaller."
+    ],
+    "predictions": {
+      "dense": "The infall rate and gas density in the magnetized model are 2-5 times smaller than in non-magnet",
+      "b256": "The gas density in the magnetized model is 2-5 times smaller than in non-magnetized accretion",
+      "b512": "The infall rate in the magnetized model is 2-5 times smaller than in non-magnetized accret",
+      "b1024": "The infall rate and gas density in the magnetized model are 2-5 times smaller than in non-magnet",
+      "b2048": "The infall rate and gas density in the magnetized model are 2-5 times smaller than in non-magnet"
+    },
+    "f1": {
+      "dense": 57.14285714285714,
+      "b256": 46.15384615384615,
+      "b512": 46.15384615384615,
+      "b1024": 57.14285714285714,
+      "b2048": 57.14285714285714
+    }
+  },
+  {
+    "sample": "035",
+    "prompt_tokens": "7431",
+    "document_tokens": "7378",
+    "model_context": "40960",
+    "stratum": "medium",
+    "source_id": "6b35731428ea6d9b480338b90572d21690c2fbb89ebba249",
+    "question": "What is the potential of SNNs in modeling the visual system?",
+    "answers": [
+      "SNNs have the potential to better model and explain the functional hierarchy and mechanisms of the visual system."
+    ],
+    "predictions": {
+      "dense": "The potential of SNNs in modeling the visual system is demonstrated through their ability to achieve high representation similarity scores, provide",
+      "b256": "The potential of SNNs in modeling the visual system is their ability to achieve high representation similarity.",
+      "b512": "The potential of SNNs in modeling the visual system is demonstrated through their ability to achieve high representation similarity with other deep",
+      "b1024": "The potential of SNNs in modeling the visual system is demonstrated through their ability to achieve high representation similarity, as shown",
+      "b2048": "The potential of SNNs in modeling the visual system is demonstrated through their ability to achieve high representation similarity scores, provide"
+    },
+    "f1": {
+      "dense": 35.294117647058826,
+      "b256": 40.0,
+      "b512": 34.285714285714285,
+      "b1024": 35.294117647058826,
+      "b2048": 35.294117647058826
+    }
+  },
+  {
+    "sample": "096",
+    "prompt_tokens": "8456",
+    "document_tokens": "8406",
+    "model_context": "40960",
+    "stratum": "medium",
+    "source_id": "2914f0d14be47681d3c23b975c5bdadf23943ddd2bdd99d5",
+    "question": "Can someone sell or modify the Agency Spotter Content?",
+    "answers": [
+      "No."
+    ],
+    "predictions": {
+      "dense": "Yes.",
+      "b256": "Yes.",
+      "b512": "Yes.",
+      "b1024": "Yes.",
+      "b2048": "Yes."
+    },
+    "f1": {
+      "dense": 0.0,
+      "b256": 0.0,
+      "b512": 0.0,
+      "b1024": 0.0,
+      "b2048": 0.0
+    }
+  },
+  {
+    "sample": "069",
+    "prompt_tokens": "5790",
+    "document_tokens": "5741",
+    "model_context": "40960",
+    "stratum": "medium",
+    "source_id": "048c12357868d908dfb979ef3c5c6cf7f6d85053acf1cac4",
+    "question": "What does the new Iraqi Body Count organization do?",
+    "answers": [
+      "It provides cover for the war and allows supporters of the illegal war to point to it."
+    ],
+    "predictions": {
+      "dense": "The new Iraqi Body Count organization provides cover for the war and allows supporters of the illegal war to point to it and insist",
+      "b256": "The new Iraqi Body Count organization provides support for the war and allows supporters of the illegal war to point to it and claim",
+      "b512": "The new Iraqi Body Count organization provides cover for the war and allows supporters of the illegal war to point to it and insist",
+      "b1024": "The new Iraqi Body Count organization provides cover for the war and allows supporters of the illegal war to point to it and insist",
+      "b2048": "The new Iraqi Body Count organization provides cover for the war and allows supporters of the illegal war to point to it and insist"
+    },
+    "f1": {
+      "dense": 77.77777777777779,
+      "b256": 72.22222222222221,
+      "b512": 77.77777777777779,
+      "b1024": 77.77777777777779,
+      "b2048": 77.77777777777779
+    }
+  },
+  {
+    "sample": "089",
+    "prompt_tokens": "5358",
+    "document_tokens": "5309",
+    "model_context": "40960",
+    "stratum": "medium",
+    "source_id": "4d6cd243b10a8460d2e2239182b797420ccc36335a74d23e",
+    "question": "What is the main focus of the research paper?",
+    "answers": [
+      "Nuclear liquid-gas transition in lattice QCD."
+    ],
+    "predictions": {
+      "dense": "The main focus of the research paper is to study the nuclear liquid-gas transition in the strong coupling regime of lattice Q",
+      "b256": "The research paper focuses on the nuclear liquid-gas transition in the strong coupling regime of lattice QCD.",
+      "b512": "The main focus of the research paper is the study of the nuclear liquid-gas transition in the strong coupling regime of lattice",
+      "b1024": "The main focus of the research paper is to study the nuclear liquid-gas transition in the strong coupling regime of lattice Q",
+      "b2048": "The main focus of the research paper is to study the nuclear liquid-gas transition in the strong coupling regime of lattice Q"
+    },
+    "f1": {
+      "dense": 41.66666666666667,
+      "b256": 60.0,
+      "b512": 43.47826086956522,
+      "b1024": 41.66666666666667,
+      "b2048": 41.66666666666667
+    }
+  },
+  {
+    "sample": "075",
+    "prompt_tokens": "10008",
+    "document_tokens": "9961",
+    "model_context": "40960",
+    "stratum": "long",
+    "source_id": "4214e20df9d299bae4fb9ba8d1b4792d516812e86960009c",
+    "question": "What do dendritic spines contain?",
+    "answers": [
+      "They are rich in actin and have been shown to be highly dynamic."
+    ],
+    "predictions": {
+      "dense": "Dendritic spines contain presynaptic terminals and sites of postsynaptic specialization.",
+      "b256": "Dendritic spines contain proteins.",
+      "b512": "Dendritic spines contain synaptic structures.",
+      "b1024": "Dendritic spines contain the postsynaptic compartment of synapses.",
+      "b2048": "Dendritic spines contain presynaptic and postsynaptic structures."
+    },
+    "f1": {
+      "dense": 8.695652173913043,
+      "b256": 0.0,
+      "b512": 0.0,
+      "b1024": 0.0,
+      "b2048": 10.0
+    }
+  },
+  {
+    "sample": "135",
+    "prompt_tokens": "12934",
+    "document_tokens": "12882",
+    "model_context": "40960",
+    "stratum": "long",
+    "source_id": "25d54c0a145838996b56def82126f35b3fabe3e100d10fc0",
+    "question": "What are the restrictions on the use of Broadjam's servers?",
+    "answers": [
+      "No excessive overloading and no use for illegal activity."
+    ],
+    "predictions": {
+      "dense": "Broadjam restricts the use of its servers to prevent overloading and ensures stability, prohibiting software or scripts that cause server",
+      "b256": "The restrictions on the use of Broadjam's servers include the protection of the rights of the artist and the confidentiality of the",
+      "b512": "The restrictions on the use of Broadjam's servers are that they cannot be used for spamming activities.",
+      "b1024": "The restrictions on the use of Broadjam's servers include the prohibition of spam, and the requirement to comply with applicable laws",
+      "b2048": "Broadjam's servers are restricted from being used for spam purposes, and Hosting Subscribers must comply with applicable laws and regulations"
+    },
+    "f1": {
+      "dense": 21.428571428571427,
+      "b256": 16.666666666666664,
+      "b512": 16.666666666666664,
+      "b1024": 15.384615384615385,
+      "b2048": 13.793103448275861
+    }
+  },
+  {
+    "sample": "116",
+    "prompt_tokens": "11447",
+    "document_tokens": "11398",
+    "model_context": "40960",
+    "stratum": "long",
+    "source_id": "1d46294ee8fcc0a64828778b04198fcbe4f75841775e1205",
+    "question": "Is the ISR necessary for transgene reactivation?",
+    "answers": [
+      "No, it is not necessary."
+    ],
+    "predictions": {
+      "dense": "Yes, the ISR is necessary for transgene reactivation.",
+      "b256": "Yes.",
+      "b512": "Yes.",
+      "b1024": "Yes.",
+      "b2048": "Yes."
+    },
+    "f1": {
+      "dense": 33.33333333333333,
+      "b256": 0.0,
+      "b512": 0.0,
+      "b1024": 0.0,
+      "b2048": 0.0
+    }
+  }
+]

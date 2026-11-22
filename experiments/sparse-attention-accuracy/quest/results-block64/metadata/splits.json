@@ -1,0 +1,186 @@
+{
+  "tuning": [
+    {
+      "sample": "071",
+      "prompt_tokens": "4960",
+      "document_tokens": "4909",
+      "model_context": "40960",
+      "stratum": "short",
+      "source_id": "67dd297408f3d52f22ede88df0b62644dac86da77f009e71",
+      "question": "When did Simon English become the leader of the National Party?",
+      "answers": [
+        "October 2001."
+      ]
+    },
+    {
+      "sample": "067",
+      "prompt_tokens": "1362",
+      "document_tokens": "1311",
+      "model_context": "40960",
+      "stratum": "short",
+      "source_id": "22034e095a602824678c4028e6f605919ce520270dc06089",
+      "question": "What is the scaling form for the alternative order parameter O?",
+      "answers": [
+        "O(t, L_{\\parallel}; S_\\Delta) = L_{\\parallel}^{-\\beta/[\\nu(1+\\Delta)]} \\tilde f_O(t/L_{\\parallel}^{z/(1+\\Delta)}; S_\\Delta)."
+      ]
+    },
+    {
+      "sample": "030",
+      "prompt_tokens": "1852",
+      "document_tokens": "1789",
+      "model_context": "40960",
+      "stratum": "short",
+      "source_id": "3074f07df75f95b421d8871cb9f6448e130ad7d948b137b8",
+      "question": "How does the infall rate and gas density in the magnetized model compare to non-magnetized accretion?",
+      "answers": [
+        "Infall rate is 2-5 times smaller and gas density is 2-5 times smaller."
+      ]
+    },
+    {
+      "sample": "035",
+      "prompt_tokens": "7431",
+      "document_tokens": "7378",
+      "model_context": "40960",
+      "stratum": "medium",
+      "source_id": "6b35731428ea6d9b480338b90572d21690c2fbb89ebba249",
+      "question": "What is the potential of SNNs in modeling the visual system?",
+      "answers": [
+        "SNNs have the potential to better model and explain the functional hierarchy and mechanisms of the visual system."
+      ]
+    },
+    {
+      "sample": "096",
+      "prompt_tokens": "8456",
+      "document_tokens": "8406",
+      "model_context": "40960",
+      "stratum": "medium",
+      "source_id": "2914f0d14be47681d3c23b975c5bdadf23943ddd2bdd99d5",
+      "question": "Can someone sell or modify the Agency Spotter Content?",
+      "answers": [
+        "No."
+      ]
+    },
+    {
+      "sample": "069",
+      "prompt_tokens": "5790",
+      "document_tokens": "5741",
+      "model_context": "40960",
+      "stratum": "medium",
+      "source_id": "048c12357868d908dfb979ef3c5c6cf7f6d85053acf1cac4",
+      "question": "What does the new Iraqi Body Count organization do?",
+      "answers": [
+        "It provides cover for the war and allows supporters of the illegal war to point to it."
+      ]
+    },
+    {
+      "sample": "089",
+      "prompt_tokens": "5358",
+      "document_tokens": "5309",
+      "model_context": "40960",
+      "stratum": "medium",
+      "source_id": "4d6cd243b10a8460d2e2239182b797420ccc36335a74d23e",
+      "question": "What is the main focus of the research paper?",
+      "answers": [
+        "Nuclear liquid-gas transition in lattice QCD."
+      ]
+    },
+    {
+      "sample": "075",
+      "prompt_tokens": "10008",
+      "document_tokens": "9961",
+      "model_context": "40960",
+      "stratum": "long",
+      "source_id": "4214e20df9d299bae4fb9ba8d1b4792d516812e86960009c",
+      "question": "What do dendritic spines contain?",
+      "answers": [
+        "They are rich in actin and have been shown to be highly dynamic."
+      ]
+    },
+    {
+      "sample": "135",
+      "prompt_tokens": "12934",
+      "document_tokens": "12882",
+      "model_context": "40960",
+      "stratum": "long",
+      "source_id": "25d54c0a145838996b56def82126f35b3fabe3e100d10fc0",
+      "question": "What are the restrictions on the use of Broadjam's servers?",
+      "answers": [
+        "No excessive overloading and no use for illegal activity."
+      ]
+    },
+    {
+      "sample": "116",
+      "prompt_tokens": "11447",
+      "document_tokens": "11398",
+      "model_context": "40960",
+      "stratum": "long",
+      "source_id": "1d46294ee8fcc0a64828778b04198fcbe4f75841775e1205",
+      "question": "Is the ISR necessary for transgene reactivation?",
+      "answers": [
+        "No, it is not necessary."
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "sample": "106",
+      "prompt_tokens": "3207",
+      "document_tokens": "3160",
+      "model_context": "40960",
+      "stratum": "short",
+      "source_id": "635ad5e3696e0d297f3ea8909d42975a5c1eb49a7f4a8466",
+      "question": "What models were used for dialect identification?",
+      "answers": [
+        "BERT, RoBERTa, ELECTRA, GPT-2, and XLM-RoBERTa."
+      ]
+    },
+    {
+      "sample": "011",
+      "prompt_tokens": "6577",
+      "document_tokens": "6520",
+      "model_context": "40960",
+      "stratum": "medium",
+      "source_id": "5a18017502d827b72fc74d91f13f6f14193b4964c3420e47",
+      "question": "How is the vacuum processing system configured in terms of the arrangement of the vacuum processing apparatus?",
+      "answers": [
+        "Multiple vacuum processing apparatuses are arranged in parallel."
+      ]
+    },
+    {
+      "sample": "139",
+      "prompt_tokens": "7773",
+      "document_tokens": "7722",
+      "model_context": "40960",
+      "stratum": "medium",
+      "source_id": "33bfe67a3d40e71a5e5351ea5db4ea55df61a018d071074b",
+      "question": "What is the purpose of the baseline in the layout procedure?",
+      "answers": [
+        "The baseline is used as a reference for the mid point of the firewall for the developed side panel."
+      ]
+    },
+    {
+      "sample": "088",
+      "prompt_tokens": "11471",
+      "document_tokens": "11409",
+      "model_context": "40960",
+      "stratum": "long",
+      "source_id": "583c9765ccee578fbc4e86090b48ca54163aa00fd5911cfe",
+      "question": "What is the average magnetic moment per column in Ge$_{1-x}$Mn$_{x}$ films?",
+      "answers": [
+        "1425 $\\mu_{B}$."
+      ]
+    },
+    {
+      "sample": "143",
+      "prompt_tokens": "8723",
+      "document_tokens": "8671",
+      "model_context": "40960",
+      "stratum": "long",
+      "source_id": "a8da0d2585bb54d571a2ab4a539b61eef56b5e271692be42",
+      "question": "Who is responsible for carrying out the functions assigned under the act?",
+      "answers": [
+        "The Director of Town and Country Planning is responsible for carrying out the functions assigned under the act."
+      ]
+    }
+  ]
+}

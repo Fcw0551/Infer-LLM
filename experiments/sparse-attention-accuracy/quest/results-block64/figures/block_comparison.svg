@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 500" width="1100" height="500" role="img">
+<title>Quest 块大小对照</title>
+<rect width="100%" height="100%" fill="white"/>
+<g font-family="system-ui,sans-serif" font-size="15" fill="#172432">
+<text x="32" y="40" font-size="25" font-weight="700">Quest 块大小与 LongBench 答题得分</text>
+<text x="32" y="67" >同一批题 · 同一 Dense 基线 · 相同的每头 token 预算</text>
+<path d="M34,92h24" stroke="#1765a6" stroke-width="3"/>
+<text x="66" y="97" >16 token/块</text>
+<path d="M214,92h24" stroke="#a64720" stroke-width="3"/>
+<text x="246" y="97" >32 token/块</text>
+<path d="M394,92h24" stroke="#397738" stroke-width="3"/>
+<text x="426" y="97" >64 token/块</text>
+<text x="588" y="97" >灰色虚线表示各组 Dense</text>
+<text x="86" y="139" font-weight="650">调参集（10 题） · 平均 F1</text>
+<path d="M86,400.0h400" stroke="#e1e6eb"/>
+<text x="76" y="405.0" text-anchor="end">0</text>
+<path d="M86,351.4h400" stroke="#e1e6eb"/>
+<text x="76" y="356.4" text-anchor="end">10</text>
+<path d="M86,302.8h400" stroke="#e1e6eb"/>
+<text x="76" y="307.79999999999995" text-anchor="end">20</text>
+<path d="M86,254.2h400" stroke="#e1e6eb"/>
+<text x="76" y="259.2" text-anchor="end">30</text>
+<path d="M86,205.6h400" stroke="#e1e6eb"/>
+<text x="76" y="210.6" text-anchor="end">40</text>
+<path d="M86,157.0h400" stroke="#e1e6eb"/>
+<text x="76" y="162.0" text-anchor="end">50</text>
+<path d="M86,266.2h400" stroke="#687684" stroke-dasharray="6 5"/>
+<text x="493" y="270.1852575812934" font-size="12">27.53</text>
+<text x="114.0" y="426" text-anchor="middle">256</text>
+<text x="228.66666666666669" y="426" text-anchor="middle">512</text>
+<text x="343.33333333333337" y="426" text-anchor="middle">1,024</text>
+<text x="458.0" y="426" text-anchor="middle">2,048</text>
+<text x="286.0" y="463" text-anchor="middle">每个 query head 的 token 预算</text>
+<polyline points="114.0,293.9 228.7,258.1 343.3,265.9 458.0,289.2" fill="none" stroke="#1765a6" stroke-width="2.8"/>
+<circle cx="114.0" cy="293.9" r="5" fill="#1765a6" stroke="white"><title>16 token/块，预算 256，F1 21.84</title></circle>
+<circle cx="228.7" cy="258.1" r="5" fill="#1765a6" stroke="white"><title>16 token/块，预算 512，F1 29.19</title></circle>
+<circle cx="343.3" cy="265.9" r="5" fill="#1765a6" stroke="white"><title>16 token/块，预算 1,024，F1 27.59</title></circle>
+<circle cx="458.0" cy="289.2" r="5" fill="#1765a6" stroke="white"><title>16 token/块，预算 2,048，F1 22.80</title></circle>
+<polyline points="114.0,285.8 228.7,293.9 343.3,289.5 458.0,285.5" fill="none" stroke="#a64720" stroke-width="2.8"/>
+<rect x="110.0" y="281.8" width="8" height="8" fill="#a64720" stroke="white"><title>32 token/块，预算 256，F1 23.50</title></rect>
+<rect x="224.7" y="289.9" width="8" height="8" fill="#a64720" stroke="white"><title>32 token/块，预算 512，F1 21.84</title></rect>
+<rect x="339.3" y="285.5" width="8" height="8" fill="#a64720" stroke="white"><title>32 token/块，预算 1,024，F1 22.73</title></rect>
+<rect x="454.0" y="281.5" width="8" height="8" fill="#a64720" stroke="white"><title>32 token/块，预算 2,048，F1 23.57</title></rect>
+<polyline points="114.0,306.8 228.7,290.6 343.3,293.3 458.0,261.4" fill="none" stroke="#397738" stroke-width="2.8"/>
+<path d="M114.0,300.8 l6,6 l-6,6 l-6,-6 Z" fill="#397738" stroke="white"><title>64 token/块，预算 256，F1 19.17</title></path>
+<path d="M228.7,284.6 l6,6 l-6,6 l-6,-6 Z" fill="#397738" stroke="white"><title>64 token/块，预算 512，F1 22.51</title></path>
+<path d="M343.3,287.3 l6,6 l-6,6 l-6,-6 Z" fill="#397738" stroke="white"><title>64 token/块，预算 1,024，F1 21.96</title></path>
+<path d="M458.0,255.4 l6,6 l-6,6 l-6,-6 Z" fill="#397738" stroke="white"><title>64 token/块，预算 2,048，F1 28.51</title></path>
+<text x="621" y="139" font-weight="650">留出集（5 题） · 平均 F1</text>
+<path d="M621,400.0h400" stroke="#e1e6eb"/>
+<text x="611" y="405.0" text-anchor="end">0</text>
+<path d="M621,351.4h400" stroke="#e1e6eb"/>
+<text x="611" y="356.4" text-anchor="end">10</text>
+<path d="M621,302.8h400" stroke="#e1e6eb"/>
+<text x="611" y="307.79999999999995" text-anchor="end">20</text>
+<path d="M621,254.2h400" stroke="#e1e6eb"/>
+<text x="611" y="259.2" text-anchor="end">30</text>
+<path d="M621,205.6h400" stroke="#e1e6eb"/>
+<text x="611" y="210.6" text-anchor="end">40</text>
+<path d="M621,157.0h400" stroke="#e1e6eb"/>
+<text x="611" y="162.0" text-anchor="end">50</text>
+<path d="M621,244.9h400" stroke="#687684" stroke-dasharray="6 5"/>
+<text x="1028" y="248.9032967032967" font-size="12">31.91</text>
+<text x="649.0" y="426" text-anchor="middle">256</text>
+<text x="763.6666666666666" y="426" text-anchor="middle">512</text>
+<text x="878.3333333333334" y="426" text-anchor="middle">1,024</text>
+<text x="993.0" y="426" text-anchor="middle">2,048</text>
+<text x="821.0" y="463" text-anchor="middle">每个 query head 的 token 预算</text>
+<polyline points="649.0,293.3 763.7,276.5 878.3,241.3 993.0,190.4" fill="none" stroke="#1765a6" stroke-width="2.8"/>
+<circle cx="649.0" cy="293.3" r="5" fill="#1765a6" stroke="white"><title>16 token/块，预算 256，F1 21.96</title></circle>
+<circle cx="763.7" cy="276.5" r="5" fill="#1765a6" stroke="white"><title>16 token/块，预算 512，F1 25.41</title></circle>
+<circle cx="878.3" cy="241.3" r="5" fill="#1765a6" stroke="white"><title>16 token/块，预算 1,024，F1 32.65</title></circle>
+<circle cx="993.0" cy="190.4" r="5" fill="#1765a6" stroke="white"><title>16 token/块，预算 2,048，F1 43.12</title></circle>
+<polyline points="649.0,274.4 763.7,305.4 878.3,272.0 993.0,273.6" fill="none" stroke="#a64720" stroke-width="2.8"/>
+<rect x="645.0" y="270.4" width="8" height="8" fill="#a64720" stroke="white"><title>32 token/块，预算 256，F1 25.85</title></rect>
+<rect x="759.7" y="301.4" width="8" height="8" fill="#a64720" stroke="white"><title>32 token/块，预算 512，F1 19.46</title></rect>
+<rect x="874.3" y="268.0" width="8" height="8" fill="#a64720" stroke="white"><title>32 token/块，预算 1,024，F1 26.34</title></rect>
+<rect x="989.0" y="269.6" width="8" height="8" fill="#a64720" stroke="white"><title>32 token/块，预算 2,048，F1 26.00</title></rect>
+<polyline points="649.0,298.2 763.7,236.5 878.3,243.1 993.0,242.0" fill="none" stroke="#397738" stroke-width="2.8"/>
+<path d="M649.0,292.2 l6,6 l-6,6 l-6,-6 Z" fill="#397738" stroke="white"><title>64 token/块，预算 256，F1 20.95</title></path>
+<path d="M763.7,230.5 l6,6 l-6,6 l-6,-6 Z" fill="#397738" stroke="white"><title>64 token/块，预算 512，F1 33.65</title></path>
+<path d="M878.3,237.1 l6,6 l-6,6 l-6,-6 Z" fill="#397738" stroke="white"><title>64 token/块，预算 1,024，F1 32.28</title></path>
+<path d="M993.0,236.0 l6,6 l-6,6 l-6,-6 Z" fill="#397738" stroke="white"><title>64 token/块，预算 2,048，F1 32.52</title></path>
+</g></svg>

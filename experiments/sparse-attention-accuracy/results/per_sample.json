@@ -1,0 +1,110 @@
+[
+  {
+    "sample": "003",
+    "source_id": "47b9dbb6d85243ffdaf6d95e842986b30d49d95913f21b6a",
+    "question": "How does the framework capture the reduced-order dynamics?",
+    "answers": [
+      "By using a propagator in the latent space."
+    ],
+    "predictions": {
+      "dense": "The framework captures the reduced-order dynamics by using a complex-valued latent space and an interpretable latent dynamics, allowing for",
+      "recent512": "The framework captures the reduced-order dynamics.",
+      "sink4_recent508": "The framework captures the reduced-order dynamics by quantifying uncertainty in predictions."
+    },
+    "f1": {
+      "dense": 0.38095238095238093,
+      "recent512": 0.0,
+      "sink4_recent508": 0.26666666666666666
+    }
+  },
+  {
+    "sample": "004",
+    "source_id": "ce720011515773e6bd7b4b355c52a7215ad2920f18a1ec14",
+    "question": "Who is the county seat of McPherson County?",
+    "answers": [
+      "McPherson."
+    ],
+    "predictions": {
+      "dense": "McPherson County's county seat is McPherson.",
+      "recent512": "McPherson CountyesteadقAnswer:",
+      "sink4_recent508": "McPherson County's county seat is located in the town of McPherson."
+    },
+    "f1": {
+      "dense": 0.2857142857142857,
+      "recent512": 0.6666666666666666,
+      "sink4_recent508": 0.18181818181818182
+    }
+  },
+  {
+    "sample": "006",
+    "source_id": "8e79ff617e6cfd373020194ce4cb84531a6aec6ab7e6cfc2",
+    "question": "When did the club win the Armenian Premier League for the first time?",
+    "answers": [
+      "In the 2013-2014 season."
+    ],
+    "predictions": {
+      "dense": "The club won the Armenian Premier League for the first time in 2013–2014.",
+      "recent512": "The club won the Armenian Premier League for the first time.",
+      "sink4_recent508": "The club won the Armenian Premier League for the first time in 2013."
+    },
+    "f1": {
+      "dense": 0.15384615384615385,
+      "recent512": 0.0,
+      "sink4_recent508": 0.15384615384615385
+    }
+  },
+  {
+    "sample": "007",
+    "source_id": "25ebcea4435f88495b4175446d1d7d6dacb1034a8f861ca5",
+    "question": "When was Weep Not, Child first published?",
+    "answers": [
+      "Weep Not, Child was first published in 1964."
+    ],
+    "predictions": {
+      "dense": "Weep Not, Child was first published in 1964.",
+      "recent512": "WeumpastاءعQuestionBaseOnAboveTextAnswer nắm",
+      "sink4_recent508": "Weep Not, Child was first published in 1964."
+    },
+    "f1": {
+      "dense": 1.0,
+      "recent512": 0.0,
+      "sink4_recent508": 1.0
+    }
+  },
+  {
+    "sample": "014",
+    "source_id": "f01044ae4abc16064872421a7dc9b21c98dc2bb4f4b5351a",
+    "question": "How many novels did Margaret Way write?",
+    "answers": [
+      "Margaret Way wrote more than 120 novels."
+    ],
+    "predictions": {
+      "dense": "Answer: 120 novels.",
+      "recent512": "Answer:",
+      "sink4_recent508": "Answer: 125 novels."
+    },
+    "f1": {
+      "dense": 0.4,
+      "recent512": 0.0,
+      "sink4_recent508": 0.2
+    }
+  },
+  {
+    "sample": "017",
+    "source_id": "71902c8027dca26b265f12709ec21224b5abe8b9ef5750fd",
+    "question": "Where is McPherson County located?",
+    "answers": [
+      "McPherson County is located in the U.S. state of Kansas."
+    ],
+    "predictions": {
+      "dense": "McPherson County is located in the U.S. state of Kansas.",
+      "recent512": "McPherson County",
+      "sink4_recent508": "McPherson County is located in Kansas."
+    },
+    "f1": {
+      "dense": 1.0,
+      "recent512": 0.36363636363636365,
+      "sink4_recent508": 0.8
+    }
+  }
+]

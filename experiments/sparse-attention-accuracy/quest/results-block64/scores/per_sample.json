@@ -1,0 +1,396 @@
+{
+  "tuning": [
+    {
+      "sample": "071",
+      "prompt_tokens": "4960",
+      "document_tokens": "4909",
+      "model_context": "40960",
+      "stratum": "short",
+      "source_id": "67dd297408f3d52f22ede88df0b62644dac86da77f009e71",
+      "question": "When did Simon English become the leader of the National Party?",
+      "answers": [
+        "October 2001."
+      ],
+      "predictions": {
+        "dense": "12 December 2016.",
+        "b256": "2018.",
+        "b512": "2018.",
+        "b1024": "1997.",
+        "b2048": "1997."
+      },
+      "f1": {
+        "dense": 0.0,
+        "b256": 0.0,
+        "b512": 0.0,
+        "b1024": 0.0,
+        "b2048": 0.0
+      }
+    },
+    {
+      "sample": "067",
+      "prompt_tokens": "1362",
+      "document_tokens": "1311",
+      "model_context": "40960",
+      "stratum": "short",
+      "source_id": "22034e095a602824678c4028e6f605919ce520270dc06089",
+      "question": "What is the scaling form for the alternative order parameter O?",
+      "answers": [
+        "O(t, L_{\\parallel}; S_\\Delta) = L_{\\parallel}^{-\\beta/[\\nu(1+\\Delta)]} \\tilde f_O(t/L_{\\parallel}^{z/(1+\\Delta)}; S_\\Delta)."
+      ],
+      "predictions": {
+        "dense": "The scaling form for the alternative order parameter $ O $ is given by Eq. \\eqref{eq:Oscaling",
+        "b256": "The answer is: $O (t, L_{\\parallel}; \\sigma) = L_{\\parallel}^{-",
+        "b512": "$O \\sim t^{\\alpha} L_\\parallel^{-1/2}$",
+        "b1024": "The scaling form for the alternative order parameter $ O $ is given by Eq. \\eqref{eq:Oscaling",
+        "b2048": "The scaling form for the alternative order parameter $ O $ is given by Eq. \\eqref{eq:Oscaling"
+      },
+      "f1": {
+        "dense": 0.0,
+        "b256": 14.285714285714285,
+        "b512": 0.0,
+        "b1024": 0.0,
+        "b2048": 0.0
+      }
+    },
+    {
+      "sample": "030",
+      "prompt_tokens": "1852",
+      "document_tokens": "1789",
+      "model_context": "40960",
+      "stratum": "short",
+      "source_id": "3074f07df75f95b421d8871cb9f6448e130ad7d948b137b8",
+      "question": "How does the infall rate and gas density in the magnetized model compare to non-magnetized accretion?",
+      "answers": [
+        "Infall rate is 2-5 times smaller and gas density is 2-5 times smaller."
+      ],
+      "predictions": {
+        "dense": "The infall rate and gas density in the magnetized model are 2-5 times smaller than in non-magnet",
+        "b256": "The infall rate and gas density in the magnetized model are significantly lower than in non-magnetized models, and",
+        "b512": "The infall rate and gas density in the magnetized model are 2-5 times smaller than in non-magnet",
+        "b1024": "The infall rate and gas density in the magnetized model are 2-5 times smaller than in non-magnet",
+        "b2048": "The infall rate and gas density in the magnetized model are 2-5 times smaller than in non-magnet"
+      },
+      "f1": {
+        "dense": 57.14285714285714,
+        "b256": 34.48275862068966,
+        "b512": 57.14285714285714,
+        "b1024": 57.14285714285714,
+        "b2048": 57.14285714285714
+      }
+    },
+    {
+      "sample": "035",
+      "prompt_tokens": "7431",
+      "document_tokens": "7378",
+      "model_context": "40960",
+      "stratum": "medium",
+      "source_id": "6b35731428ea6d9b480338b90572d21690c2fbb89ebba249",
+      "question": "What is the potential of SNNs in modeling the visual system?",
+      "answers": [
+        "SNNs have the potential to better model and explain the functional hierarchy and mechanisms of the visual system."
+      ],
+      "predictions": {
+        "dense": "The potential of SNNs in modeling the visual system is demonstrated through their ability to achieve high representation similarity scores, provide",
+        "b256": "The potential of SNNs (Spiking Neural Networks) in modeling the visual system is their ability to achieve high representation",
+        "b512": "The potential of SNNs in modeling the visual system is their ability to achieve high representation similarity.",
+        "b1024": "The potential of SNNs in modeling the visual system is demonstrated through their ability to achieve high representation similarity scores, as",
+        "b2048": "The potential of SNNs in modeling the visual system is demonstrated through their ability to achieve high representation similarity scores, provide"
+      },
+      "f1": {
+        "dense": 35.294117647058826,
+        "b256": 37.5,
+        "b512": 40.0,
+        "b1024": 35.294117647058826,
+        "b2048": 35.294117647058826
+      }
+    },
+    {
+      "sample": "096",
+      "prompt_tokens": "8456",
+      "document_tokens": "8406",
+      "model_context": "40960",
+      "stratum": "medium",
+      "source_id": "2914f0d14be47681d3c23b975c5bdadf23943ddd2bdd99d5",
+      "question": "Can someone sell or modify the Agency Spotter Content?",
+      "answers": [
+        "No."
+      ],
+      "predictions": {
+        "dense": "Yes.",
+        "b256": "Yes.",
+        "b512": "Yes.",
+        "b1024": "Yes.",
+        "b2048": "Yes."
+      },
+      "f1": {
+        "dense": 0.0,
+        "b256": 0.0,
+        "b512": 0.0,
+        "b1024": 0.0,
+        "b2048": 0.0
+      }
+    },
+    {
+      "sample": "069",
+      "prompt_tokens": "5790",
+      "document_tokens": "5741",
+      "model_context": "40960",
+      "stratum": "medium",
+      "source_id": "048c12357868d908dfb979ef3c5c6cf7f6d85053acf1cac4",
+      "question": "What does the new Iraqi Body Count organization do?",
+      "answers": [
+        "It provides cover for the war and allows supporters of the illegal war to point to it."
+      ],
+      "predictions": {
+        "dense": "The new Iraqi Body Count organization provides cover for the war and allows supporters of the illegal war to point to it and insist",
+        "b256": "The new Iraqi Body Count organization provides cover for the violence and allows its supporters to point to \"things aren't so bad",
+        "b512": "The new Iraqi Body Count organization provides cover for the war and allows supporters to point to it and insist that \"Things aren",
+        "b1024": "The new Iraqi Body Count organization provides cover for the war and allows supporters to point to it and insist that \"Things aren",
+        "b2048": "The new Iraqi Body Count organization provides cover for the war and allows supporters of the illegal war to point to it and insist"
+      },
+      "f1": {
+        "dense": 77.77777777777779,
+        "b256": 51.42857142857142,
+        "b512": 61.111111111111114,
+        "b1024": 61.111111111111114,
+        "b2048": 77.77777777777779
+      }
+    },
+    {
+      "sample": "089",
+      "prompt_tokens": "5358",
+      "document_tokens": "5309",
+      "model_context": "40960",
+      "stratum": "medium",
+      "source_id": "4d6cd243b10a8460d2e2239182b797420ccc36335a74d23e",
+      "question": "What is the main focus of the research paper?",
+      "answers": [
+        "Nuclear liquid-gas transition in lattice QCD."
+      ],
+      "predictions": {
+        "dense": "The main focus of the research paper is to study the nuclear liquid-gas transition in the strong coupling regime of lattice Q",
+        "b256": "The main focus of the research paper is the study of the nuclear liquid-gas transition in the strong coupling regime of lattice",
+        "b512": "The main focus of the research paper is the study of the nuclear liquid-gas transition in the strong coupling regime of lattice",
+        "b1024": "The main focus of the research paper is to study the nuclear liquid-gas transition in the strong coupling regime of lattice Q",
+        "b2048": "The main focus of the research paper is to study the nuclear liquid-gas transition in the strong coupling regime of lattice Q"
+      },
+      "f1": {
+        "dense": 41.66666666666667,
+        "b256": 43.47826086956522,
+        "b512": 43.47826086956522,
+        "b1024": 41.66666666666667,
+        "b2048": 41.66666666666667
+      }
+    },
+    {
+      "sample": "075",
+      "prompt_tokens": "10008",
+      "document_tokens": "9961",
+      "model_context": "40960",
+      "stratum": "long",
+      "source_id": "4214e20df9d299bae4fb9ba8d1b4792d516812e86960009c",
+      "question": "What do dendritic spines contain?",
+      "answers": [
+        "They are rich in actin and have been shown to be highly dynamic."
+      ],
+      "predictions": {
+        "dense": "Dendritic spines contain presynaptic terminals and sites of postsynaptic specialization.",
+        "b256": "Dendritic spines contain neurotransmitters.",
+        "b512": "Dendritic spines contain synapses and the extracellular matrix.",
+        "b1024": "Dendritic spines contain the presynaptic terminals and the postsynaptic compartments.",
+        "b2048": "Dendritic spines contain actin and are the sites of excitatory connections."
+      },
+      "f1": {
+        "dense": 8.695652173913043,
+        "b256": 0.0,
+        "b512": 10.0,
+        "b1024": 9.523809523809524,
+        "b2048": 26.08695652173913
+      }
+    },
+    {
+      "sample": "135",
+      "prompt_tokens": "12934",
+      "document_tokens": "12882",
+      "model_context": "40960",
+      "stratum": "long",
+      "source_id": "25d54c0a145838996b56def82126f35b3fabe3e100d10fc0",
+      "question": "What are the restrictions on the use of Broadjam's servers?",
+      "answers": [
+        "No excessive overloading and no use for illegal activity."
+      ],
+      "predictions": {
+        "dense": "Broadjam restricts the use of its servers to prevent overloading and ensures stability, prohibiting software or scripts that cause server",
+        "b256": "The restrictions on the use of Broadjam servers are outlined in the agreement.",
+        "b512": "Broadjam's servers are protected by copyright laws and international treaties, and any unauthorized use or distribution of their content is prohibited",
+        "b1024": "The restrictions on the use of Broadjam's servers are that they cannot be used for spamming activities as described in the",
+        "b2048": "Broadjam's servers are restricted from being used for spam purposes, and users must comply with applicable laws and regulations, including"
+      },
+      "f1": {
+        "dense": 21.428571428571427,
+        "b256": 10.526315789473683,
+        "b512": 13.333333333333334,
+        "b1024": 14.814814814814813,
+        "b2048": 13.793103448275861
+      }
+    },
+    {
+      "sample": "116",
+      "prompt_tokens": "11447",
+      "document_tokens": "11398",
+      "model_context": "40960",
+      "stratum": "long",
+      "source_id": "1d46294ee8fcc0a64828778b04198fcbe4f75841775e1205",
+      "question": "Is the ISR necessary for transgene reactivation?",
+      "answers": [
+        "No, it is not necessary."
+      ],
+      "predictions": {
+        "dense": "Yes, the ISR is necessary for transgene reactivation.",
+        "b256": "Yes.",
+        "b512": "Yes.",
+        "b1024": "Yes.",
+        "b2048": "Yes, the ISR is necessary for transgene reactivation."
+      },
+      "f1": {
+        "dense": 33.33333333333333,
+        "b256": 0.0,
+        "b512": 0.0,
+        "b1024": 0.0,
+        "b2048": 33.33333333333333
+      }
+    }
+  ],
+  "validation": [
+    {
+      "sample": "106",
+      "prompt_tokens": "3207",
+      "document_tokens": "3160",
+      "model_context": "40960",
+      "stratum": "short",
+      "source_id": "635ad5e3696e0d297f3ea8909d42975a5c1eb49a7f4a8466",
+      "question": "What models were used for dialect identification?",
+      "answers": [
+        "BERT, RoBERTa, ELECTRA, GPT-2, and XLM-RoBERTa."
+      ],
+      "predictions": {
+        "dense": "The models used for dialect identification are XLM-RoBERTa, BERT, ELECTRA, GPT-2",
+        "b256": "The models used for dialect identification were the two-stage pipeline, which includes language classification and dialect classification.",
+        "b512": "The models used for dialect identification were XLM-RoBERTa, BERT, and ELECTRA.",
+        "b1024": "The models used for dialect identification are XLM-RoBERTa, BERT, ELECTRA, GPT-2",
+        "b2048": "The models used for dialect identification are BERT, RoBERTa, and XLM-RoBERTa."
+      },
+      "f1": {
+        "dense": 50.0,
+        "b256": 9.523809523809524,
+        "b512": 50.0,
+        "b1024": 50.0,
+        "b2048": 50.0
+      }
+    },
+    {
+      "sample": "011",
+      "prompt_tokens": "6577",
+      "document_tokens": "6520",
+      "model_context": "40960",
+      "stratum": "medium",
+      "source_id": "5a18017502d827b72fc74d91f13f6f14193b4964c3420e47",
+      "question": "How is the vacuum processing system configured in terms of the arrangement of the vacuum processing apparatus?",
+      "answers": [
+        "Multiple vacuum processing apparatuses are arranged in parallel."
+      ],
+      "predictions": {
+        "dense": "The vacuum processing system is configured with a plurality of cassette tables and cassette stands, a vacuum loader with a conveying device,",
+        "b256": "The vacuum processing system is configured with a vacuum processing apparatus that includes a conveyor system for transporting the sample.",
+        "b512": "The vacuum processing system is configured with a vacuum processing apparatus that includes a vacuum processing chamber, a conveyor, and a conveyor",
+        "b1024": "The vacuum processing system is configured with a vacuum processing chamber that is symmetrically positioned around the axis line, with two et",
+        "b2048": "The vacuum processing system is configured with a T-shaped arrangement, where the vacuum processing apparatus is connected to the cassette via a"
+      },
+      "f1": {
+        "dense": 15.384615384615385,
+        "b256": 16.666666666666664,
+        "b512": 16.0,
+        "b1024": 14.814814814814813,
+        "b2048": 16.0
+      }
+    },
+    {
+      "sample": "139",
+      "prompt_tokens": "7773",
+      "document_tokens": "7722",
+      "model_context": "40960",
+      "stratum": "medium",
+      "source_id": "33bfe67a3d40e71a5e5351ea5db4ea55df61a018d071074b",
+      "question": "What is the purpose of the baseline in the layout procedure?",
+      "answers": [
+        "The baseline is used as a reference for the mid point of the firewall for the developed side panel."
+      ],
+      "predictions": {
+        "dense": "The purpose of the baseline in the layout procedure is to provide a reference for the top longeron.",
+        "b256": "The purpose of the baseline in the layout procedure is to provide a reference point for the building process.",
+        "b512": "The purpose of the baseline in the layout procedure is to serve as a reference line for the top longeron.",
+        "b1024": "The purpose of the baseline in the layout procedure is to provide a reference for the top longeron measurements.",
+        "b2048": "The purpose of the baseline in the layout procedure is to provide a reference for the top longeron measurements."
+      },
+      "f1": {
+        "dense": 37.03703703703704,
+        "b256": 42.857142857142854,
+        "b512": 41.37931034482759,
+        "b1024": 35.714285714285715,
+        "b2048": 35.714285714285715
+      }
+    },
+    {
+      "sample": "088",
+      "prompt_tokens": "11471",
+      "document_tokens": "11409",
+      "model_context": "40960",
+      "stratum": "long",
+      "source_id": "583c9765ccee578fbc4e86090b48ca54163aa00fd5911cfe",
+      "question": "What is the average magnetic moment per column in Ge$_{1-x}$Mn$_{x}$ films?",
+      "answers": [
+        "1425 $\\mu_{B}$."
+      ],
+      "predictions": {
+        "dense": "The average magnetic moment per column in Ge$_{1-x}$Mn$_{x}$ films is approximately 1",
+        "b256": "The average magnetic property of Ge$_{1-x}$Mn$_x$ films is such that they consist of magnetic",
+        "b512": "The average magnetic moment in Ge$_{1-x}$Mn$_x$ films is isotropic.",
+        "b1024": "The average magnetic moment per Mn-rich nanocolumn in Ge$_{1-x}$Mn$_{x}$ films",
+        "b2048": "The average magnetic moment per column in Ge$_{1-x}$Mn$_{x}$ films is approximately 1"
+      },
+      "f1": {
+        "dense": 0.0,
+        "b256": 0.0,
+        "b512": 0.0,
+        "b1024": 0.0,
+        "b2048": 0.0
+      }
+    },
+    {
+      "sample": "143",
+      "prompt_tokens": "8723",
+      "document_tokens": "8671",
+      "model_context": "40960",
+      "stratum": "long",
+      "source_id": "a8da0d2585bb54d571a2ab4a539b61eef56b5e271692be42",
+      "question": "Who is responsible for carrying out the functions assigned under the act?",
+      "answers": [
+        "The Director of Town and Country Planning is responsible for carrying out the functions assigned under the act."
+      ],
+      "predictions": {
+        "dense": "The Director of Town and Country Planning.",
+        "b256": "The Town and Country Planning Act, 1977, and the Town and Country Planning Rules, 19",
+        "b512": "The answer is: The Director of Town and Country Planning.",
+        "b1024": "The answer is: The Director of Town and Country Planning.",
+        "b2048": "The answer is: The Director of Town and Country Planning."
+      },
+      "f1": {
+        "dense": 57.14285714285714,
+        "b256": 35.714285714285715,
+        "b512": 60.86956521739131,
+        "b1024": 60.86956521739131,
+        "b2048": 60.86956521739131
+      }
+    }
+  ]
+}
