@@ -575,7 +575,8 @@ std::expected<void, std::error_code> CPUBackend::compute_flash_attn(Tensor* dst)
         float scale=1.0f/std::sqrt(static_cast<float>(dims00));              // sqrt(D)
         for (int64_t key_token = 0; key_token < dims12; ++key_token){       
             // mask : 只允许访问当前位置之前的token
-            if (key_token > n_past + q_token){
+            const int64_t query = n_past + q_token;
+            if (key_token > query || (p.sliding_window && key_token >= p.attention_sink_tokens && key_token <= query - p.sliding_window)){
                 //当前 Query 正在和第几个 Key token 计算注意力分数
                 scores[key_token] = -std::numeric_limits<float>::infinity();
                 continue;
