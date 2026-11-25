@@ -31,7 +31,7 @@ public:
     static Tensor *gelu(Graph &g, Tensor *x, std::string_view name = "gelu");
 
     // 位置编码 
-    static Tensor* rope(Graph& g, Tensor* x, Tensor* inp_pos,Tensor* rope_theta_table,std::string_view name="rope");
+    static Tensor* rope(Graph& g, Tensor* x, Tensor* inp_pos,Tensor* rope_theta_table,std::string_view name="rope", bool interleaved = false);
 
     // 注意力
     static Tensor* soft_max(Graph& g, Tensor* x, Tensor* mask, float scale);

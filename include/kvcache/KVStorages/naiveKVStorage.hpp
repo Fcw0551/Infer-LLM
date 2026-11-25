@@ -49,7 +49,7 @@ public:
 private:
     // 仅在 active_users == 0 时调用。具体实现完成本地准备或迁移，更新 object
     // 返回成功时数据已就绪；不得删除该状态或改变 ID、layer、计数
-    std::expected<void, std::error_code> prepare_object(StorageId id, std::size_t layer);
+    std::expected<void, std::error_code> prepare_object(const KVObjectAccessRequest& request);
 
     // 仅在计数为0时调用；归还实际内存/池块。基类随后删除 _states 条目
     void destroy_object(StorageId id) noexcept;

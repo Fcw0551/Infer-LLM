@@ -7,7 +7,7 @@ public:
     internlm2Model(GGUFContext&& gguf) 
     : ModelBase(std::move(gguf))
     {}
-   virtual std::expected<Graph,std::error_code>build_graph(GraphContext& g_ctx) const {
-        std::cout<<"internlm2Model build_graph"<<std::endl;
+    std::expected<Graph, std::error_code> build_graph(GraphContext& g_ctx) const override {
+        return build_decoder_graph(g_ctx, false, true);
     }
 };

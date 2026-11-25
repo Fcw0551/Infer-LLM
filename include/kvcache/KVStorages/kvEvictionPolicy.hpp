@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <tuple>
 
 #include "../kvutil.hpp"
 
@@ -33,5 +34,17 @@ public:
     std::string name(){
         return "LRU";
     }
-    std::optional<StorageId> select_victim(std::span<const KVEvictionCandidate> candidates) const override;
+    std::optional<StorageId> select_victim(std::span<const KVEvictionCandidate> candidates) const override {
+        if (candidates.empty())
+            return std::nullopt;
+        auto rank = [](const KVEvictionCandidate& candidate) {
+            return std::tie(candidate.last_access_order, candidate.admission_order, candidate.id);
+        };
+        const auto* victim = &candidates.front();
+        for (const auto& candidate : candidates.subspan(1)) {
+            if (rank(candidate) < rank(*victim))
+                victim = &candidate;
+        }
+        return victim->id;
+    }
 };

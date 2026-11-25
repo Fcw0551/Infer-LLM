@@ -75,8 +75,8 @@ private:
 class GraphContext{
 public:
     GraphContext() = default;
-    uint32_t attention_window = 0;
-    uint32_t attention_sink_tokens = 0;
+    uint32_t attention_window = 0;          // 保留最近的多少个token的kv
+    uint32_t attention_sink_tokens = 0;     // 额外保留最开头多少个 Token 的 KV
     // 借用 CPU 后端；其生命周期必须覆盖当前 context。
     explicit GraphContext(Backend* cpu_backend) : _cpu_backend(cpu_backend) {}
 

@@ -66,6 +66,7 @@ public:
     std::expected<void, std::error_code> clear_sequence();
 
 private:
+    friend struct QuestSweepAccess;
     std::unique_ptr<KVStrategy> _strategy;
     std::unordered_map<SequenceId, SequenceState> _sequences;
     SequenceId _next_sequence_id = 1;

@@ -90,6 +90,8 @@ struct Arena
 
 class ModelBase{
 protected:
+    std::expected<Graph, std::error_code> build_decoder_graph(
+        GraphContext& g_ctx, bool normalize_qk, bool interleaved_rope) const;
     GGUFContext _gguf;                                 // GGUF文件
     HParams _hparams;                                  // 超参数  ：模型是什么
     Weights _weights;                                  // 权重视图：模型有什么   

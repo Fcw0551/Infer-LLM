@@ -10,13 +10,13 @@
 #include "../backend.hpp"
 #include "../util.hpp"
 
-// 访问需求不指定源介质；Storage 根据 ID 对应的副本状态选择有效数据源。
-// 当前连续对象使用对象内 token 坐标；有效历史由上层事务状态确定。
+// 访问需求不指定源介质；Storage 根据 ID 对应的副本状态选择有效数据源
+// 当前连续对象使用对象内 token 坐标；有效历史由上层事务状态确定
 struct KVObjectAccessRequest {
-    StorageId id = kInvalidStorageId;
-    std::size_t layer = 0;
-    std::size_t history_tokens = 0;
-    TokenRange writable;
+    StorageId id = kInvalidStorageId;   // 访问哪个存储对象
+    std::size_t layer = 0;              // 校验所属层，并确定计算backend
+    std::size_t history_tokens = 0;     // 本次计算需要的已有有效前缀 [0, history_tokens)
+    TokenRange writable;                // 本次允许写入的范围，不代表已经写入成功
 };
 
 struct KVStorageObject{
