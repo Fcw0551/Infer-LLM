@@ -1,0 +1,11 @@
+{"instance": "pallets__flask-5014", "sha256": "da65a7885da7991e9df2553dd828989cd1781a68c303791aa8294e3af3bd938d", "block_size": 64, "budget_per_head": 2048, "context": 16384}
+{"call": 1, "status": "ok", "start": 0, "input_tokens": 1057, "reply_tokens": 45}
+{"call": 2, "status": "ok", "start": 1102, "input_tokens": 38, "reply_tokens": 45}
+{"call": 3, "status": "ok", "start": 1185, "input_tokens": 812, "reply_tokens": 113}
+{"call": 4, "status": "ok", "start": 2110, "input_tokens": 23, "reply_tokens": 45}
+{"call": 5, "status": "ok", "start": 2178, "input_tokens": 127, "reply_tokens": 43}
+{"call": 6, "status": "ok", "start": 2348, "input_tokens": 54, "reply_tokens": 59}
+{"call": 7, "status": "ok", "start": 2461, "input_tokens": 135, "reply_tokens": 67}
+{"call": 8, "status": "ok", "start": 2663, "input_tokens": 27, "reply_tokens": 44}
+{"call": 9, "status": "ok", "start": 2734, "input_tokens": 23, "reply_tokens": 28}
+{"call": 10, "status": "ok", "start": 2785, "input_tokens": 151, "reply_tokens": 37}

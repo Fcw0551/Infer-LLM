@@ -1,0 +1,15 @@
+{"instance": "psf__requests-1142", "sha256": "fe5c3e82d88343e4157c1559abb4a36735e3e75cf2721e2e187976ed2b8a917d", "block_size": 64, "budget_per_head": 2048, "context": 16384}
+{"call": 1, "status": "ok", "start": 0, "input_tokens": 1087, "reply_tokens": 90}
+{"call": 2, "status": "ok", "start": 1177, "input_tokens": 795, "reply_tokens": 42}
+{"call": 3, "status": "ok", "start": 2014, "input_tokens": 551, "reply_tokens": 99}
+{"call": 4, "status": "ok", "start": 2664, "input_tokens": 107, "reply_tokens": 390}
+{"call": 5, "status": "ok", "start": 3161, "input_tokens": 23, "reply_tokens": 42}
+{"call": 6, "status": "ok", "start": 3226, "input_tokens": 141, "reply_tokens": 73}
+{"call": 7, "status": "ok", "start": 3440, "input_tokens": 250, "reply_tokens": 391}
+{"call": 8, "status": "ok", "start": 4081, "input_tokens": 303, "reply_tokens": 352}
+{"call": 9, "status": "ok", "start": 4736, "input_tokens": 309, "reply_tokens": 39}
+{"call": 10, "status": "ok", "start": 5084, "input_tokens": 63, "reply_tokens": 29}
+{"call": 11, "status": "ok", "start": 5176, "input_tokens": 32, "reply_tokens": 97}
+{"call": 12, "status": "ok", "start": 5305, "input_tokens": 548, "reply_tokens": 141}
+{"call": 13, "status": "ok", "start": 5994, "input_tokens": 23, "reply_tokens": 28}
+{"call": 14, "status": "ok", "start": 6045, "input_tokens": 318, "reply_tokens": 42}

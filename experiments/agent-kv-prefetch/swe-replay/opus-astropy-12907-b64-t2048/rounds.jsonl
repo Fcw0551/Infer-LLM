@@ -1,0 +1,25 @@
+{"instance": "astropy__astropy-12907", "sha256": "25bc166a1055f1304f44db28ba69787ff51ddaefdd693764a67e08605b017204", "block_size": 64, "budget_per_head": 2048}
+{"call": 1, "status": "ok", "start": 0, "input_tokens": 1331, "reply_tokens": 34}
+{"call": 2, "status": "ok", "start": 1365, "input_tokens": 2434, "reply_tokens": 170}
+{"call": 3, "status": "ok", "start": 3969, "input_tokens": 367, "reply_tokens": 39}
+{"call": 4, "status": "ok", "start": 4375, "input_tokens": 190, "reply_tokens": 38}
+{"call": 5, "status": "ok", "start": 4603, "input_tokens": 52, "reply_tokens": 39}
+{"call": 6, "status": "ok", "start": 4694, "input_tokens": 101, "reply_tokens": 170}
+{"call": 7, "status": "ok", "start": 4965, "input_tokens": 270, "reply_tokens": 42}
+{"call": 8, "status": "ok", "start": 5277, "input_tokens": 84, "reply_tokens": 33}
+{"call": 9, "status": "ok", "start": 5394, "input_tokens": 88, "reply_tokens": 42}
+{"call": 10, "status": "ok", "start": 5524, "input_tokens": 94, "reply_tokens": 45}
+{"call": 11, "status": "ok", "start": 5663, "input_tokens": 112, "reply_tokens": 40}
+{"call": 12, "status": "ok", "start": 5815, "input_tokens": 270, "reply_tokens": 44}
+{"call": 13, "status": "ok", "start": 6129, "input_tokens": 93, "reply_tokens": 42}
+{"call": 14, "status": "ok", "start": 6264, "input_tokens": 94, "reply_tokens": 32}
+{"call": 15, "status": "ok", "start": 6390, "input_tokens": 61, "reply_tokens": 38}
+{"call": 16, "status": "ok", "start": 6489, "input_tokens": 150, "reply_tokens": 52}
+{"call": 17, "status": "ok", "start": 6691, "input_tokens": 95, "reply_tokens": 81}
+{"call": 18, "status": "ok", "start": 6867, "input_tokens": 64, "reply_tokens": 41}
+{"call": 19, "status": "ok", "start": 6972, "input_tokens": 25, "reply_tokens": 170}
+{"call": 20, "status": "ok", "start": 7167, "input_tokens": 287, "reply_tokens": 42}
+{"call": 21, "status": "ok", "start": 7496, "input_tokens": 23, "reply_tokens": 41}
+{"call": 22, "status": "ok", "start": 7560, "input_tokens": 73, "reply_tokens": 41}
+{"call": 23, "status": "ok", "start": 7674, "input_tokens": 220, "reply_tokens": 189}
+{"call": 24, "status": "context_limit", "start": 8083, "input_tokens": 347, "reply_tokens": 186}

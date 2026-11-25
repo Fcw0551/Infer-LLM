@@ -1,0 +1,19 @@
+{"instance": "django__django-10097", "sha256": "16bf0684d853ed6258b08b601ecfbba708168575aaa6d4706c5d87c6857889dd", "block_size": 64, "budget_per_head": 2048}
+{"call": 1, "status": "ok", "start": 0, "input_tokens": 1589, "reply_tokens": 78}
+{"call": 2, "status": "ok", "start": 1667, "input_tokens": 255, "reply_tokens": 43}
+{"call": 3, "status": "ok", "start": 1965, "input_tokens": 770, "reply_tokens": 151}
+{"call": 4, "status": "ok", "start": 2886, "input_tokens": 189, "reply_tokens": 112}
+{"call": 5, "status": "ok", "start": 3187, "input_tokens": 23, "reply_tokens": 37}
+{"call": 6, "status": "ok", "start": 3247, "input_tokens": 52, "reply_tokens": 336}
+{"call": 7, "status": "ok", "start": 3635, "input_tokens": 197, "reply_tokens": 63}
+{"call": 8, "status": "ok", "start": 3895, "input_tokens": 321, "reply_tokens": 55}
+{"call": 9, "status": "ok", "start": 4271, "input_tokens": 344, "reply_tokens": 41}
+{"call": 10, "status": "ok", "start": 4656, "input_tokens": 63, "reply_tokens": 46}
+{"call": 11, "status": "ok", "start": 4765, "input_tokens": 315, "reply_tokens": 289}
+{"call": 12, "status": "ok", "start": 5369, "input_tokens": 62, "reply_tokens": 186}
+{"call": 13, "status": "ok", "start": 5617, "input_tokens": 23, "reply_tokens": 37}
+{"call": 14, "status": "ok", "start": 5677, "input_tokens": 52, "reply_tokens": 400}
+{"call": 15, "status": "ok", "start": 6129, "input_tokens": 40, "reply_tokens": 408}
+{"call": 16, "status": "ok", "start": 6577, "input_tokens": 267, "reply_tokens": 48}
+{"call": 17, "status": "ok", "start": 6892, "input_tokens": 23, "reply_tokens": 28}
+{"call": 18, "status": "ok", "start": 6943, "input_tokens": 251, "reply_tokens": 169}

@@ -1,0 +1,13 @@
+{"instance": "matplotlib__matplotlib-13989", "sha256": "318815868b700c97a6d8089f423d226ed24059313d702887e29f0d4a86b97b5c", "block_size": 16, "budget_per_head": 1024, "context": 16384}
+{"call": 1, "status": "ok", "start": 0, "input_tokens": 1496, "reply_tokens": 75}
+{"call": 2, "status": "ok", "start": 1571, "input_tokens": 329, "reply_tokens": 49}
+{"call": 3, "status": "ok", "start": 1949, "input_tokens": 2228, "reply_tokens": 49}
+{"call": 4, "status": "ok", "start": 4226, "input_tokens": 912, "reply_tokens": 111}
+{"call": 5, "status": "ok", "start": 5249, "input_tokens": 38, "reply_tokens": 62}
+{"call": 6, "status": "ok", "start": 5349, "input_tokens": 23, "reply_tokens": 139}
+{"call": 7, "status": "ok", "start": 5511, "input_tokens": 53, "reply_tokens": 39}
+{"call": 8, "status": "ok", "start": 5603, "input_tokens": 155, "reply_tokens": 145}
+{"call": 9, "status": "ok", "start": 5903, "input_tokens": 110, "reply_tokens": 160}
+{"call": 10, "status": "ok", "start": 6173, "input_tokens": 75, "reply_tokens": 46}
+{"call": 11, "status": "ok", "start": 6294, "input_tokens": 23, "reply_tokens": 28}
+{"call": 12, "status": "ok", "start": 6345, "input_tokens": 171, "reply_tokens": 87}
