@@ -1,9 +1,11 @@
 #include "../../include/models/Qwen3.hpp"
 
-// Qwen3 建计算图
-std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ctx) const{
-	std::cout << "qwen3Model build_graph start........" << std::endl;
+std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ctx) const {
+    return build_decoder_graph(g_ctx, true, false);
+}
 
+std::expected<Graph, std::error_code> ModelBase::build_decoder_graph(
+    GraphContext& g_ctx, bool normalize_qk, bool interleaved_rope) const {
 	Graph g; // 后面返回出去tensor的生命依旧被引用，只有全部被析构的时候才没
 
 	const uint32_t n_embd_head_k = _hparams.n_embd_head_k; // 每个头的维度
@@ -63,13 +65,13 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 		Tensor *k_reshape = OpFactory::reshape(g, k, {n_embd_head_k, n_head_kv, n_tokens, 1}, "k_reshape_" + std::to_string(i));
 		Tensor *v_reshape = OpFactory::reshape(g, v, {n_embd_head_v, n_head_kv, n_tokens, 1}, "v_reshape_" + std::to_string(i));
 
-		// qk -> rms_norm
-		Tensor *q_norm = OpFactory::rms_norm(g, q_reshape, _weights.layers[i].attn_q_norm, _hparams.rms_norm_eps, "attn_q_norm_" + std::to_string(i));
-		Tensor *k_norm = OpFactory::rms_norm(g, k_reshape, _weights.layers[i].attn_k_norm, _hparams.rms_norm_eps, "attn_k_norm_" + std::to_string(i));
-		
-		// q_norm k_norm  -->  rope  (TODO:这里可能性能会差，每次都要sin和cos计算，后续可以用空间换时间)
-		Tensor *q_rope = OpFactory::rope(g, q_norm, inp_pos, rope_theta_table, "rope_q_" + std::to_string(i));
-		Tensor *k_rope = OpFactory::rope(g, k_norm, inp_pos, rope_theta_table, "rope_k_" + std::to_string(i));
+		if (normalize_qk) {
+            q_reshape = OpFactory::rms_norm(g, q_reshape, _weights.layers[i].attn_q_norm, _hparams.rms_norm_eps, "attn_q_norm_" + std::to_string(i));
+            k_reshape = OpFactory::rms_norm(g, k_reshape, _weights.layers[i].attn_k_norm, _hparams.rms_norm_eps, "attn_k_norm_" + std::to_string(i));
+        }
+
+        Tensor *q_rope = OpFactory::rope(g, q_reshape, inp_pos, rope_theta_table, "rope_q_" + std::to_string(i), interleaved_rope);
+        Tensor *k_rope = OpFactory::rope(g, k_reshape, inp_pos, rope_theta_table, "rope_k_" + std::to_string(i), interleaved_rope);
 
 		// kvcache
 		// 将k_rope 和 v_reshape 缓存起来，然后拼接一个完整的送入flase_attn
@@ -132,6 +134,5 @@ std::expected<Graph, std::error_code> Qwen3Model::build_graph(GraphContext& g_ct
 	// 标记输出
 	g.mark_output(logits);
 
-	std::cout << "qwen3Model build_graph end........" << std::endl;
 	return g;
 }

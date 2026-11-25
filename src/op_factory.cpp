@@ -135,10 +135,11 @@ Tensor *OpFactory::silu(Graph &g, Tensor *x, std::string_view name){
 //Tensor *OpFactory::gelu(Graph &g, Tensor *x);
 
 // 位置编码
-Tensor *OpFactory::rope(Graph &g, Tensor *x, Tensor *inp_pos, Tensor *rope_theta_table, std::string_view name){
+Tensor *OpFactory::rope(Graph &g, Tensor *x, Tensor *inp_pos, Tensor *rope_theta_table, std::string_view name, bool interleaved){
     // 输入和输出形状一致
     Tensor *result = create_tensor(g, name, x->dataType, {x->dims[0], x->dims[1], x->dims[2], x->dims[3]});
     result->op = OperationType::GGML_OP_ROPE;
+    result->op_params[0] = interleaved;
     result->tensorRole = TensorRole::TENSOR_ROLE_ACTIVATION;
     result->src[0] = x;
     result->src[1] = inp_pos;

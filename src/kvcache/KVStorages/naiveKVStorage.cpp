@@ -66,7 +66,9 @@ std::expected<StorageId, std::error_code> NaiveKVStorage::alloc(std::size_t laye
 
 
 // 返回成功时数据已就绪；不得删除该状态或改变 ID、layer、计数
-std::expected<void, std::error_code> NaiveKVStorage::prepare_object(StorageId id, std::size_t layer){
+std::expected<void, std::error_code> NaiveKVStorage::prepare_object(const KVObjectAccessRequest& request){
+    const auto id = request.id;
+    const auto layer = request.layer;
     // 因为当前的数据本身alloc就在当前的backend，这里我们暂时做了一个朴素版本的，所以没有迁移
     if (layer >= _layers.size()){
         return std::unexpected(std::make_error_code(std::errc::invalid_argument));

@@ -251,7 +251,7 @@ namespace CUDA_F32
 
     // 一个 block 处理一个 (token, head)，每个线程旋转前后半区的一对元素
     // x/dst: [hidden_dim, n_head, n_token, 1]，theta: [hidden_dim/2, n_ctx]
-    __global__ void rope(const float *x_base, const int32_t *inp_pos_base, const float *theta_base, float *dst_base, int64_t hidden_dim, int64_t n_head, int64_t n_ctx)
+    __global__ void rope(const float *x_base, const int32_t *inp_pos_base, const float *theta_base, float *dst_base, int64_t hidden_dim, int64_t n_head, int64_t n_ctx, bool interleaved)
     {
         const int64_t row = blockIdx.x;
         const int64_t token = row / n_head;           // 计算的是第几个token
@@ -273,10 +273,12 @@ namespace CUDA_F32
             float s, c;
             sincosf(theta[j], &s, &c); // 计算sinθ和cosθ
             // 先读完一对输入，允许 dst 与 x 完全同址
-            const float x0 = x[j];
-            const float x1 = x[j + n_pairs];
-            out[j] = x0 * c - x1 * s;
-            out[j + n_pairs] = x0 * s + x1 * c;
+            const int64_t first = interleaved ? 2 * j : j;
+            const int64_t second = interleaved ? first + 1 : n_pairs + j;
+            const float x0 = x[first];
+            const float x1 = x[second];
+            out[first] = x0 * c - x1 * s;
+            out[second] = x0 * s + x1 * c;
         }
     }
 
@@ -292,7 +294,6 @@ namespace CUDA_F32
         const int64_t hidden_dim = src0->dims[0];
         const int64_t n_head = src0->dims[1];
         const int64_t n_token = src0->dims[2];
-        const int64_t n_pairs = hidden_dim / 2;
 
         if (n_token == 0)
         {
@@ -306,7 +307,7 @@ namespace CUDA_F32
         constexpr unsigned THREADS = 64;
         const dim3 block(THREADS);
         const dim3 grid(static_cast<unsigned>(n_head * n_token));
-        rope<<<grid, block, 0, stream>>>(x_base, inp_pos_base, theta_base, dst_base, hidden_dim, n_head, src2->dims[1]);
+        rope<<<grid, block, 0, stream>>>(x_base, inp_pos_base, theta_base, dst_base, hidden_dim, n_head, src2->dims[1], dst->op_params[0] != 0);
         return cudaGetLastError();
     }
 

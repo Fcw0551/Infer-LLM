@@ -466,6 +466,7 @@ std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
     float *dst_base = static_cast<float *>(dst->data);
 
     // 先计算sin 和 cos
+    const bool interleaved = dst->op_params[0] != 0;
     const int64_t n_pairs=dims00/2;                     //有多少对  比如64对，每个token都共用64对angle
     std::vector<float> sin_cache(dims02 * n_pairs);     //每个token有n_pairs对，所以总的开的空间相乘 多头共用
     std::vector<float> cos_cache(dims02 * n_pairs);
@@ -502,21 +503,14 @@ std::expected<void, std::error_code> CPUBackend::compute_rope(Tensor* dst){
         const float *cos_head = cos_cache.data() + trig_offset;
 
         for (int64_t j = 0; j < n_pairs ; ++j){
-            // // 已经缓存好的sin cos
-            // const float x0 = start[2 * j];
-            // const float x1 = start[2 * j + 1];
-            // const float c = cos_head[j];
-            // const float s = sin_head[j];
-            // dst[2 * j] = x0 * c - x1 * s;
-            // dst[2 * j + 1] = x0 * s + x1 * c;
-
-            // qwen3是使用前半部分的每个元素，和后半部分相同相对位置的元素配对（TODO，先适配qwen3跑起来先）
-            const float x0 = start[j];
-            const float x1 = start[n_pairs + j];
+            const int64_t first = interleaved ? 2 * j : j;
+            const int64_t second = interleaved ? first + 1 : n_pairs + j;
+            const float x0 = start[first];
+            const float x1 = start[second];
             const float c = cos_head[j];
             const float s = sin_head[j];
-            dst[j] = x0 * c - x1 * s;
-            dst[n_pairs + j] = x0 * s + x1 * c;
+            dst[first] = x0 * c - x1 * s;
+            dst[second] = x0 * s + x1 * c;
         }
     });
     return {};

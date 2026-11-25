@@ -27,7 +27,7 @@ std::expected<KVStorageObject, std::error_code> KVStorage::acquire(StorageId id,
     // 当前使用者 == 0 
     if (it->second.active_users == 0){
         // 准备数据到指定的layer
-        auto prepared = prepare_object(id, layer);
+        auto prepared = prepare_object({.id = id, .layer = layer, .writable = {}});
         if (!prepared)
             return std::unexpected(prepared.error());
         it = _states.find(id); // prepare 可能因为新增对象，导致 map rehash
