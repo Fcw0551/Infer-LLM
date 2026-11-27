@@ -127,7 +127,8 @@ std::expected<KVMapping, std::error_code> BlockKVStrategy::lookup(SequenceId id,
     KVMapping mapping;
     for (size_t pos = range.begin; pos < range.end();)
     {
-        size_t page = pos / _cfg.block_tokens, offset = pos % _cfg.block_tokens;
+        size_t page = pos / _cfg.block_tokens;      // 某一页
+        size_t offset = pos % _cfg.block_tokens;    // 相对于页头的偏移位置
         if (page >= ids.size())
             return invalid();
         size_t n = std::min(range.end() - pos, _cfg.block_tokens - offset);
