@@ -128,6 +128,17 @@ public:
         }
     }
 
+    // 分配页锁定主机内存（用于 CUDA 异步拷贝不退化为同步）
+    std::expected<void *, std::error_code> alloc_pinned(size_t bytes) override {
+        void *p = nullptr;
+        if (cudaHostAlloc(&p, bytes, cudaHostAllocDefault) != cudaSuccess)
+            return std::unexpected(std::make_error_code(std::errc::not_enough_memory));
+        return p;
+    }
+    void free_pinned(void *ptr) override {
+        if (ptr) cudaFreeHost(ptr);
+    }
+
     // 跨设备传输  copy结点
     bool is_host() const {
         return true;

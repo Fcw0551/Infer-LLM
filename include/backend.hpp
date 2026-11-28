@@ -89,6 +89,15 @@ public:
     // 选择各种池来一块
     virtual std::expected<void *, std::error_code> alloc(BufferKind kind, size_t bytes) = 0;
     virtual void free(BufferKind kind, void *ptr) = 0;
+
+    // 主机侧页锁定内存（供异步 H2D/D2H 传输使用），由 CPUBackend 覆写
+    virtual std::expected<void *, std::error_code> alloc_pinned(size_t bytes) {
+        (void)bytes;
+        return std::unexpected(std::make_error_code(std::errc::not_supported));
+    }
+    virtual void free_pinned(void *ptr) {
+        (void)ptr;
+    }
     
     // 跨设备传输  copy结点
     virtual bool is_host() const = 0;
