@@ -14,9 +14,10 @@ std::expected<KVLayerAccess, std::error_code> KVStrategy::acquire_layer(Sequence
         return std::unexpected(std::make_error_code(std::errc::value_too_large));
     }
 
-    const TokenRange read_range{.begin = 0, .count = n_past + n_new};
-    const TokenRange write_range = pending;
+    const TokenRange read_range{.begin = 0, .count = n_past + n_new}; // 读的范围从过去，到现在
+    const TokenRange write_range = pending;                           // 写的范围从pending开始（之前预留过的空间）
     
+    // 通过派生类的 lookup 找到片段在哪里
     auto read_mapping = lookup(id, layer, read_range);  
     if (!read_mapping){
         return std::unexpected(read_mapping.error());
@@ -26,12 +27,13 @@ std::expected<KVLayerAccess, std::error_code> KVStrategy::acquire_layer(Sequence
     if (!write_mapping){
         return std::unexpected(write_mapping.error());
     }
-
+    
+    // 准备KVLayerAccess 返回出去 
     KVLayerAccess access;
     access._owner = this;
     access.n_past = n_past;
     access.n_new = n_new;
-    std::unordered_map<StorageId, KVStorageObject> objects;
+    std::unordered_map<StorageId, KVStorageObject> objects;   // 记录对应的存储 id ---- 实际的地址结构体  （多次的kv获取，只需要向底层_storage->acquire一次即可）
     // 尚未交给外部执行；所有失败路径可立即归还已经增加的计数
     try {
         auto readable = make_KVRangeAccess(*read_mapping, read_range, layer, objects, access);
@@ -46,6 +48,23 @@ std::expected<KVLayerAccess, std::error_code> KVStrategy::acquire_layer(Sequence
         }
         access.readable = std::move(*readable);
         access.writable = std::move(*writable);
+        if (!objects.empty() && objects.begin()->second.block_pool) {
+            // K and V share one object per segment. The read range covers the whole
+            // prefix, so its acquisition order is the logical page order.
+            if (access._storage_ids.size() != read_mapping->k.size() || read_mapping->v.size() != read_mapping->k.size()) {
+                release_layer(access);
+                return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+            }
+            for (size_t i=0; i<access._storage_ids.size(); ++i) {
+                if (access._storage_ids[i] != read_mapping->k[i].storage_id || access._storage_ids[i] != read_mapping->v[i].storage_id) {
+                    release_layer(access);
+                    return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+                }
+            }
+            access.pages = std::make_unique<KVPageTableView>(KVPageTableView{
+                 access._storage_ids, _cfg.block_tokens, _cfg.max_tokens_per_sequence, id,
+                _cfg.tokens_per_head, _cfg.layers, _cfg.prefetch, objects.begin()->second.block_pool});
+        }
         if (!objects.empty()) access.backend = objects.begin()->second.backend;
         return access;
     } catch (...) {
@@ -60,6 +79,7 @@ std::expected<void, std::error_code> KVStrategy::release_layer(KVLayerAccess& ac
         return std::unexpected(std::make_error_code(std::errc::invalid_argument));
     }
     for (StorageId id : access._storage_ids) _storage->release_access(id);
+    access.pages.reset();
     access._storage_ids.clear();
     access._owner = nullptr;
     access.readable.k.clear(); access.readable.v.clear();
@@ -78,7 +98,7 @@ std::expected<KVRangeAccess, std::error_code> KVStrategy::make_KVRangeAccess(con
 
     const auto &spec = _layers[layer];
     // K/V 和读写范围按 StorageId 去重，每个对象本次只增加一次计数（防止同一段的内存被多少++）
-    Backend *backend = objects.empty() ? nullptr : objects.begin()->second.backend;
+    Backend *backend = objects.empty() ? nullptr : objects.begin()->second.backend; //这里能取任意一个对象，是因为 acquire_layer() 一次只处理一层，这一层的 K/V 视图要求使用同一个
 
     auto build = [&](const std::vector<KVSlice> &slices, bool is_k) -> std::expected<std::vector<KVSegmentView>, std::error_code> {
         const auto type = is_k ? spec.k_type : spec.v_type;
